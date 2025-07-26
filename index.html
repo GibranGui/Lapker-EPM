@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time Sheet EPM</title>
+    <title>Dashboard TimeSheet PT.EPM</title>
     <!-- PWA Manifest & Theme -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d9488">
@@ -48,9 +48,28 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
         .background-shapes div { position: absolute; border-radius: 50%; background-image: linear-gradient(to bottom right, var(--primary), var(--secondary)); opacity: 0.1; z-index: -1; }
+        
+        /* [BARU] Gaya untuk tombol install */
+        #install-btn {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            width: auto;
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
+    <!-- [BARU] Tombol untuk Install Aplikasi -->
+    <button id="install-btn" class="btn btn-secondary hidden">
+        <i class="fas fa-download mr-2"></i>
+        Install Aplikasi
+    </button>
+
     <div class="background-shapes fixed top-0 left-0 w-full h-full overflow-hidden z-[-1]">
         <div style="width: 200px; height: 200px; top: 10%; left: 5%;"></div>
         <div style="width: 300px; height: 300px; top: 60%; right: -150px;"></div>
@@ -60,7 +79,7 @@
     <!-- Halaman Autentikasi -->
     <div id="auth-page" class="hidden min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-md">
-            <h1 class="font-black text-4xl text-center mb-2">Time Sheet<span class="text-teal-500">.</span>EPM</h1>
+            <h1 class="font-black text-4xl text-center mb-2">Time Sheet<span>PT<span class="text-teal-500">.</span>EPM</h1>
             <p class="text-center text-slate-500 mb-8">Silakan masuk atau daftar untuk melanjutkan</p>
             
             <div class="glass-card p-8">
@@ -94,7 +113,7 @@
     <div id="app-page" class="hidden container mx-auto max-w-5xl p-4 md:p-6 pb-24">
         <header class="flex justify-between items-center mb-8">
             <div class="font-black text-2xl tracking-tight">
-                Time Sheet<span class="text-teal-500">.</span>EPM
+                TimeSheet<span>PT<span class="text-teal-500">.</span>EPM
             </div>
             <div class="flex items-center gap-2 md:gap-4">
                 <div class="text-right hidden md:block">
@@ -247,41 +266,9 @@
     const SUPABASE_URL = 'https://hwajcditsdmebqmflqsm.supabase.co'; // <-- GANTI DENGAN URL ANDA
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3YWpjZGl0c2RtZWJxbWZscXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTMzOTEsImV4cCI6MjA2OTA2OTM5MX0.Puq5NWeNHdtHlE8bem4QUqvIcHVyqR_AR5IlpiG-hz8'; // <-- GANTI DENGAN KUNCI ANON ANDA
 
-    // --- [PENTING] KEAMANAN ---
-    // Kunci 'anon' ini aman untuk diekspos di sisi klien HANYA JIKA
-    // Anda telah mengaktifkan dan mengonfigurasi Row Level Security (RLS)
-    // pada setiap tabel di dashboard Supabase Anda.
-    // Tanpa RLS, siapa pun dapat membaca, mengubah, atau menghapus data Anda.
-    // Pastikan aturan RLS Anda membatasi akses data hanya ke pengguna yang terautentikasi (auth.uid()).
-
     let _supabase;
 
-    // --- Pengecekan Kredensial Supabase ---
-    if (SUPABASE_URL.includes('URL_PROYEK_ANDA') || SUPABASE_ANON_KEY.includes('KUNCI_ANON_ANDA')) {
-        const criticalError = (title, text) => {
-            const modal = document.getElementById('message-modal');
-            const modalTitle = document.getElementById('message-modal-title');
-            const modalText = document.getElementById('message-modal-text');
-            const modalIcon = document.getElementById('message-modal-icon');
-            const modalButton = document.getElementById('message-modal-close-btn');
-
-            if(modal && modalTitle && modalText && modalIcon && modalButton) {
-                modalTitle.textContent = title;
-                modalText.textContent = text;
-                modalIcon.innerHTML = `<i class="fas fa-exclamation-triangle text-6xl text-yellow-400"></i>`;
-                modal.classList.replace('hidden', 'flex');
-                modalButton.onclick = () => modal.classList.replace('flex', 'hidden');
-            } else {
-                alert(`${title}\n\n${text}`);
-            }
-        };
-        setTimeout(() => {
-            criticalError(
-                'Konfigurasi Diperlukan', 
-                'Anda belum memasukkan URL dan Kunci Supabase Anda. Silakan edit file HTML dan ganti placeholder "URL_PROYEK_ANDA" dan "KUNCI_ANON_ANDA" dengan kredensial dari dashboard Supabase Anda.'
-            );
-        }, 100);
-    } else {
+    if (!SUPABASE_URL.includes('URL_PROYEK_ANDA') && !SUPABASE_ANON_KEY.includes('KUNCI_ANON_ANDA')) {
         const { createClient } = supabase;
         _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
@@ -339,7 +326,60 @@
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
-        if (!_supabase) return;
+        // --- PWA Install Logic ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Mencegah browser menampilkan prompt default
+            e.preventDefault();
+            // Simpan event agar bisa dipicu nanti
+            deferredPrompt = e;
+            // Tampilkan tombol install buatan kita
+            installBtn.classList.remove('hidden');
+            console.log('`beforeinstallprompt` event was fired.');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Tampilkan prompt install
+                deferredPrompt.prompt();
+                // Tunggu respons pengguna
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                // Kita hanya bisa menggunakan prompt ini sekali
+                deferredPrompt = null;
+                // Sembunyikan tombol setelah digunakan
+                installBtn.classList.add('hidden');
+            }
+        });
+
+        // --- Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    }).catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+
+        if (!_supabase) {
+            const modal = document.getElementById('message-modal');
+            const modalTitle = document.getElementById('message-modal-title');
+            const modalText = document.getElementById('message-modal-text');
+            const modalIcon = document.getElementById('message-modal-icon');
+            const modalButton = document.getElementById('message-modal-close-btn');
+            modalTitle.textContent = 'Konfigurasi Diperlukan';
+            modalText.textContent = 'Anda belum memasukkan URL dan Kunci Supabase Anda. Silakan edit file HTML dan ganti placeholder.';
+            modalIcon.innerHTML = `<i class="fas fa-exclamation-triangle text-6xl text-yellow-400"></i>`;
+            modal.classList.replace('hidden', 'flex');
+            modalButton.onclick = () => modal.classList.replace('flex', 'hidden');
+            return;
+        };
 
         await initDB();
 
@@ -405,7 +445,6 @@
             messageModal.classList.replace('hidden', 'flex');
         };
 
-        // [BARU] Fungsi untuk sanitasi HTML untuk mencegah XSS
         const sanitizeHTML = (str) => {
             const temp = document.createElement('div');
             temp.textContent = str;
@@ -491,7 +530,7 @@
                     await syncToServer();
                     await fetchFromServer();
                     await updateMainView();
-                    restoreActiveSession(); // [BARU] Coba pulihkan sesi aktif
+                    restoreActiveSession();
                 }
             } else {
                 currentUser = null;
@@ -521,7 +560,7 @@
             const { error } = await _supabase.auth.signUp({ 
                 email, 
                 password,
-                options: { data: { name: sanitizeHTML(name) } } // [FIX] Sanitasi nama saat pendaftaran
+                options: { data: { name: sanitizeHTML(name) } }
             });
             if (error) showMessage('Pendaftaran Gagal', error.message, true);
             else {
@@ -565,7 +604,7 @@
             let newReport = {
                 id: Date.now().toString(),
                 user_id: currentUser.id,
-                nama_operator: userNameEl.textContent, // Sudah disanitasi saat login
+                nama_operator: userNameEl.textContent,
                 tanggal: tanggalInput.value, shift: shiftInput.value, jenis_muatan: jenisMuatanInput.value,
                 unit_type: sanitizeHTML(el('#unit-type').value.toUpperCase()),
                 unit_id: sanitizeHTML(el('#unit-id').value.toUpperCase()),
@@ -575,7 +614,6 @@
                 status: 'pending_creation'
             };
 
-            // [FIX] Validasi input yang lebih ketat
             if (metode === 'hm') {
                 const hmAwal = parseFloat(hmAwalInput.value);
                 const hmAkhir = parseFloat(hmAkhirInput.value);
@@ -634,7 +672,6 @@
 
         window.addEventListener('online', syncToServer);
         
-        // --- Sisa Fungsi ---
         function renderFilteredReports(filteredReports) {
             reportListContainer.innerHTML = '';
             const hasFilteredReports = filteredReports.length > 0;
@@ -650,7 +687,6 @@
                     const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
                     const muatanTagColor = report.jenis_muatan === 'COAL' ? 'bg-slate-800 text-white' : 'bg-amber-400 text-amber-900';
                     
-                    // [FIX] Gunakan sanitizeHTML untuk semua data dari pengguna
                     card.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div>
@@ -738,7 +774,6 @@
             activateStep2();
         });
 
-        // [BARU] Fungsi untuk memulihkan sesi aktif dari localStorage
         function restoreActiveSession() {
             const savedSession = localStorage.getItem(SESSION_KEY);
             if (savedSession) {
@@ -784,7 +819,7 @@
                 let hourA = parseInt(a.split(':')[0]);
                 let hourB = parseInt(b.split(':')[0]);
                 if (shift === 'Malam') {
-                    if (hourA >= 0 && hourA < 19) hourA += 24; // Anggap jam pagi (0-7) lebih besar dari jam malam (19-23)
+                    if (hourA >= 0 && hourA < 19) hourA += 24;
                     if (hourB >= 0 && hourB < 19) hourB += 24;
                 }
                 return hourA - hourB;
@@ -802,12 +837,10 @@
         }
         function updateClock() {
             currentTimeEl.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            // [BARU] Logika untuk mengaktifkan/menonaktifkan tombol catat ritase
             const isWithinShift = checkIsWithinShift(shiftInput.value);
             recordRitaseBtn.disabled = !isWithinShift;
             recordRitaseBtn.title = isWithinShift ? 'Catat waktu ritase saat ini' : 'Di luar jam shift yang dipilih';
         }
-        // [BARU] Fungsi untuk memeriksa apakah waktu saat ini berada dalam shift
         function checkIsWithinShift(shift) {
             const currentHour = new Date().getHours();
             if (shift === 'Siang') {
@@ -824,7 +857,6 @@
             if (currentSessionRitase.hasOwnProperty(hourKey)) {
                 currentSessionRitase[hourKey].push(minutes);
                 renderRitaseTable(ritaseTableBody, currentSessionRitase, shiftInput.value);
-                // Simpan progres ke localStorage
                 const sessionData = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
                 sessionData.ritase = currentSessionRitase;
                 localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
@@ -964,7 +996,6 @@
              showMessage('Berhasil!', `Laporan PDF untuk tanggal ${formatDate(report.tanggal, true)} berhasil dibuat!`);
         }
         
-        // Atur tanggal default ke hari ini
         tanggalInput.value = new Date().toISOString().slice(0, 10);
     });
     </script>
