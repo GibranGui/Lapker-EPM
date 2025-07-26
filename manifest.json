@@ -1,6 +1,6 @@
 {
-  "name": "Laporan Kerja Pro",
-  "short_name": "Lapker Pro",
+  "name": "TimeSheet PT.EPM",
+  "short_name": "TimeSheet PT.EPM",
   "description": "Aplikasi untuk mencatat laporan kerja harian dan ritase.",
   "start_url": ".",
   "display": "standalone",
