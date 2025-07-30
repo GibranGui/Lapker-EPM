@@ -93,4 +93,3 @@ self.addEventListener('activate', event => {
     })
   );
 });
-￼Enter
