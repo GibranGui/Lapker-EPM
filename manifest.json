@@ -1,23 +1,22 @@
 {
   "name": "TimeSheet PT.EPM",
-  "short_name": "TimeSheet PT.EPM",
-  "description": "Aplikasi untuk mencatat laporan kerja harian dan ritase.",
+  "short_name": "TimeSheet",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#f0f5f9",
+  "background_color": "#0f172a",
   "theme_color": "#0d9488",
+  "description": "Aplikasi pencatatan jam kerja dan ritase.",
+  "scope": ".",
   "icons": [
     {
-      "src": "https://placehold.co/192x192/0d9488/FFFFFF?text=LP",
-      "sizes": "192x192",
+      "src": "images/icon-192.png",
       "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "192x192"
     },
     {
-      "src": "https://placehold.co/512x512/0d9488/FFFFFF?text=LP",
-      "sizes": "512x512",
+      "src": "images/icon-512.png",
       "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "512x512"
     }
   ]
 }
