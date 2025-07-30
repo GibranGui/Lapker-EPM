@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard TimeSheet PT.EPM</title>
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d9488">
+
+    <!-- Aset Lokal untuk Akses Offline -->
+    <script src="./js/tailwindcss.js"></script>
+    <link href="./css/inter-font.css" rel="stylesheet">
+    <link rel="stylesheet" href="./css/fontawesome.min.css">
+    
+    <!-- Import Supabase Client Library (Online) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Library PDF Lokal -->
+    <script src="./js/jspdf.umd.min.js"></script>
+    <script src="./js/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-light: #f0f5f9; --card-light: rgba(255, 255, 255, 0.7); --text-light: #1e293b; --border-light: rgba(203, 213, 225, 0.5);
+            --primary: #0d9488; --secondary: #6366f1; --danger: #f43f5e;
+            --bg-dark: #0f172a; --card-dark: rgba(30, 41, 59, 0.7); --text-dark: #e2e8f0; --border-dark: rgba(51, 65, 85, 0.5);
+        }
+        html.dark { color-scheme: dark; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-light); color: var(--text-light); transition: background-color 0.5s ease, color 0.5s ease; }
+        html.dark body { background-color: var(--bg-dark); color: var(--text-dark); }
+        .glass-card { background: var(--card-light); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 1.5rem; border: 1px solid var(--border-light); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); transition: all 0.5s ease; }
+        html.dark .glass-card { background: var(--card-dark); border: 1px solid var(--border-dark); }
+        .form-input-group { position: relative; }
+        .form-input { width: 100%; border: 1px solid transparent; border-radius: 0.75rem; padding: 1rem 1rem 1rem 2.75rem; font-size: 1rem; background-color: rgba(128, 128, 128, 0.1); color: var(--text-light); transition: all 0.3s ease; }
+        html.dark .form-input { background-color: rgba(255, 255, 255, 0.05); color: var(--text-dark); }
+        .form-input:focus { outline: none; border-color: var(--primary); background-color: transparent; box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.2); }
+        .form-input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; transition: color 0.3s ease; }
+        .form-input-group:focus-within .form-input-icon { color: var(--primary); }
+        .btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 1rem; border-radius: 0.75rem; font-weight: 700; transition: all 0.3s ease; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+        .btn:hover:not(:disabled) { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.2); }
+        .btn:active:not(:disabled) { transform: scale(0.98); box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background-image: linear-gradient(to right, var(--primary), #14b8a6); color: white; }
+        .btn-secondary { background-image: linear-gradient(to right, var(--secondary), #818cf8); color: white; }
+        .btn-danger { background-image: linear-gradient(to right, var(--danger), #fb7185); color: white; }
+        .btn-gray { background-color: #e2e8f0; color: #334152; box-shadow: none; }
+        html.dark .btn-gray { background-color: #334152; color: #e2e8f0; }
+        .section-title { font-size: 1.5rem; font-weight: 800; color: inherit; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
+        .section-title i { color: var(--primary); }
+        .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        .background-shapes div { position: absolute; border-radius: 50%; background-image: linear-gradient(to bottom right, var(--primary), var(--secondary)); opacity: 0.1; z-index: -1; }
+        #install-btn { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100; width: auto; padding: 0.75rem 1.5rem; border-radius: 2rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <button id="install-btn" class="btn btn-secondary hidden">
+        <i class="fas fa-download mr-2"></i>
+        Install Aplikasi
+    </button>
+
+    <div class="background-shapes fixed top-0 left-0 w-full h-full overflow-hidden z-[-1]">
+        <div style="width: 200px; height: 200px; top: 10%; left: 5%;"></div>
+        <div style="width: 300px; height: 300px; top: 60%; right: -150px;"></div>
+        <div style="width: 150px; height: 150px; bottom: 20%; left: 20%;"></div>
+    </div>
+
+    <!-- Halaman Autentikasi -->
+    <div id="auth-page" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <h1 class="font-black text-4xl text-center mb-2">Time Sheet<span>PT<span class="text-teal-500">.</span>EPM</h1>
+            <p class="text-center text-slate-500 mb-8">Silakan masuk atau daftar untuk melanjutkan</p>
+            
+            <div class="glass-card p-8">
+                <!-- Form Login -->
+                <form id="login-form" class="">
+                    <h2 class="text-2xl font-bold mb-6">Masuk</h2>
+                    <div class="space-y-4">
+                        <div class="form-input-group"><i class="fas fa-envelope form-input-icon"></i><input type="email" id="login-email" class="form-input" placeholder="Email" required></div>
+                        <div class="form-input-group"><i class="fas fa-lock form-input-icon"></i><input type="password" id="login-password" class="form-input" placeholder="Password" required></div>
+                        <button type="submit" class="btn btn-primary w-full !py-3">Masuk</button>
+                    </div>
+                    <p class="text-center text-sm mt-6">Belum punya akun? <a href="#" id="show-register-link" class="font-bold text-teal-500 hover:underline">Daftar di sini</a></p>
+                </form>
+
+                <!-- Form Register -->
+                <form id="register-form" class="hidden">
+                    <h2 class="text-2xl font-bold mb-6">Daftar Akun Baru</h2>
+                    <div class="space-y-4">
+                        <div class="form-input-group"><i class="fas fa-user form-input-icon"></i><input type="text" id="register-name" class="form-input" placeholder="Nama Lengkap" required></div>
+                        <div class="form-input-group"><i class="fas fa-envelope form-input-icon"></i><input type="email" id="register-email" class="form-input" placeholder="Email" required></div>
+                        <div class="form-input-group"><i class="fas fa-lock form-input-icon"></i><input type="password" id="register-password" class="form-input" placeholder="Password" required></div>
+                        <button type="submit" class="btn btn-secondary w-full !py-3">Daftar</button>
+                    </div>
+                    <p class="text-center text-sm mt-6">Sudah punya akun? <a href="#" id="show-login-link" class="font-bold text-teal-500 hover:underline">Masuk di sini</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Halaman Aplikasi Utama -->
+    <div id="app-page" class="hidden container mx-auto max-w-5xl p-4 md:p-6 pb-24">
+        <header class="flex justify-between items-center mb-8">
+            <div class="font-black text-2xl tracking-tight">
+                TimeSheet<span>PT<span class="text-teal-500">.</span>EPM
+            </div>
+            <div class="flex items-center gap-2 md:gap-4">
+                <div class="text-right hidden md:block">
+                    <p id="user-name" class="font-bold"></p>
+                    <p id="user-email" class="text-xs text-slate-500"></p>
+                </div>
+                <button id="logout-btn" class="glass-card !rounded-full h-12 w-12 flex items-center justify-center text-slate-500 hover:text-rose-500 transition-colors" aria-label="Keluar">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+                <button id="theme-toggle" class="glass-card !rounded-full h-12 w-12 flex items-center justify-center text-slate-500 hover:text-teal-500 transition-colors" aria-label="Ubah Tema">
+                    <i class="fas fa-sun" id="theme-icon-sun"></i>
+                    <i class="fas fa-moon hidden" id="theme-icon-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="space-y-8">
+            <!-- Form Section -->
+            <div class="glass-card p-6 md:p-8">
+                <form id="timesheet-form">
+                    <!-- Step 1: Initial Info -->
+                    <div id="step-1">
+                        <h2 class="section-title"><i class="fas fa-play-circle"></i>Mulai Sesi Kerja Baru</h2>
+                        <div class="space-y-5">
+                             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                 <div class="form-input-group"><i class="fas fa-calendar-alt form-input-icon"></i><input type="date" id="tanggal" class="form-input"></div>
+                                 <div class="form-input-group"><i class="fas fa-clock form-input-icon"></i><select id="shift" class="form-input"><option value="" disabled selected>Pilih Shift...</option><option value="Siang">Siang (07-19)</option><option value="Malam">Malam (19-07)</option></select></div>
+                                 <div class="form-input-group"><i class="fas fa-truck-loading form-input-icon"></i><select id="jenis-muatan" class="form-input"><option value="" disabled selected>Pilih Muatan...</option><option value="OB">OB</option><option value="COAL">COAL</option></select></div>
+                            </div>
+                            <button type="button" id="start-session-btn" class="btn btn-primary !py-4"><i class="fas fa-arrow-right mr-3"></i>Lanjutkan ke Pencatatan</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Active Session -->
+                    <div id="step-2" class="hidden">
+                         <div class="bg-teal-500/10 p-4 rounded-xl mb-6 flex justify-between items-center border border-teal-500/20">
+                            <div>
+                                <h3 class="text-lg font-bold text-teal-600 flex items-center"><i class="fas fa-spinner fa-spin mr-3"></i>Sesi Aktif</h3>
+                                <div id="step-1-summary" class="text-sm text-teal-700 ml-8 mt-1 dark:text-teal-400"></div>
+                            </div>
+                            <button type="button" id="cancel-session-btn" class="text-sm font-semibold text-rose-500 hover:text-rose-700 transition">Batalkan</button>
+                        </div>
+                        
+                        <div id="ritase-recorder" class="glass-card !bg-transparent p-4 rounded-xl mb-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold">Tabel Ritase (<span id="current-time" class="text-teal-500"></span>)</h4>
+                                <div class="relative">
+                                    <button type="button" id="record-ritase-btn" class="btn btn-secondary w-auto px-5 py-2.5" title="Catat waktu ritase saat ini"><i class="fas fa-plus-circle mr-2"></i>Catat</button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-inner">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-black/5 dark:bg-white/5">
+                                        <tr>
+                                            <th class="p-3 font-semibold text-left">Waktu</th>
+                                            <th class="p-3 font-semibold text-left">Ritase Tercatat (Menit)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ritase-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-6 fade-in">
+                             <h2 class="section-title pt-6"><i class="fas fa-check-circle"></i>Selesaikan Laporan</h2>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                 <div class="form-input-group"><i class="fas fa-truck-pickup form-input-icon"></i><input type="text" id="unit-type" placeholder="Tipe Unit (Cth: Dump Truck)" class="form-input uppercase" required></div>
+                                 <div class="form-input-group"><i class="fas fa-hashtag form-input-icon"></i><input type="text" id="unit-id" placeholder="ID Unit (Cth: DT 80)" class="form-input uppercase" required></div>
+                            </div>
+                             <div class="form-input-group"><i class="fas fa-calculator form-input-icon"></i><select id="metode" class="form-input"><option value="" disabled selected>Pilih Metode Perhitungan...</option><option value="hm">Hours Meter (HM)</option><option value="jam_dunia">Jam Dunia</option></select></div>
+                            <div id="hm-inputs" class="hidden grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="form-input-group"><i class="fas fa-hourglass-start form-input-icon"></i><input type="number" step="0.01" min="0" id="hm-awal" placeholder="HM Awal" class="form-input"></div>
+                                <div class="form-input-group"><i class="fas fa-hourglass-end form-input-icon"></i><input type="number" step="0.01" min="0" id="hm-akhir" placeholder="HM Akhir" class="form-input"></div>
+                            </div>
+                            <div id="jam-dunia-inputs" class="hidden space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div class="form-input-group"><i class="fas fa-play form-input-icon"></i><input type="time" id="jam-mulai" class="form-input"></div>
+                                    <div class="form-input-group"><i class="fas fa-stop form-input-icon"></i><input type="time" id="jam-selesai" class="form-input"></div>
+                                </div>
+                                <div class="form-input-group"><i class="fas fa-mug-hot form-input-icon"></i><input type="number" step="0.1" min="0" id="jam-istirahat" placeholder="Lama Istirahat (Jam)" class="form-input" value="0"></div>
+                            </div>
+                             <div class="form-input-group"><i class="fas fa-pencil-alt form-input-icon"></i><textarea id="note" rows="3" class="form-input" placeholder="Catatan Aktivitas..."></textarea></div>
+                            <button type="submit" class="btn btn-primary !py-4"><i class="fas fa-save mr-3"></i>Simpan & Selesaikan</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Report Dashboard Section -->
+            <div id="report-section" class="space-y-6 hidden">
+                <div class="glass-card p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="w-full md:w-auto flex-grow">
+                             <label for="main-month-filter" class="text-sm font-medium text-slate-500 mb-2 block">Dashboard Laporan Bulan</label>
+                             <select id="main-month-filter" class="form-input !p-3 !pl-5 w-full font-bold text-lg"></select>
+                        </div>
+                       <div id="total-card" class="w-full md:w-auto bg-gradient-to-tr from-teal-500 to-cyan-500 text-white p-4 rounded-xl text-center hidden shadow-lg">
+                           <p class="text-sm font-medium uppercase tracking-wider">Total Jam</p>
+                           <p id="grand-total-jam" class="font-black text-4xl tracking-tighter">0.00</p>
+                       </div>
+                    </div>
+                </div>
+                <div id="report-list-container" class="space-y-4"></div>
+                
+                <div id="export-section" class="hidden pt-4 glass-card p-6">
+                    <h3 class="section-title !text-xl !mb-4"><i class="fas fa-file-invoice-dollar"></i>Buat Laporan Gaji Bulanan</h3>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                        <p class="font-semibold text-base">Komponen Gaji & Potongan (Otomatis):</p>
+                        <ul class="list-disc list-inside ml-2">
+                            <li>Gaji Pokok: <strong>Rp3.703.206</strong></li>
+                            <li>Gaji per Jam (Lembur): <strong>Rp15.000</strong></li>
+                            <li>Bonus Ritase OB: <strong>Rp400</strong></li>
+                            <li>Bonus Ritase COAL: <strong>Rp1.250</strong></li>
+                            <li>Potongan BPJS Kesehatan: <strong>1%</strong> dari Gaji Pokok</li>
+                            <li>Potongan BPJS Ketenagakerjaan: <strong>3%</strong> dari Gaji Pokok</li>
+                        </ul>
+                    </div>
+                    <button id="export-pdf-btn" class="btn btn-danger mt-5"><i class="fas fa-file-pdf mr-3"></i>Buat Slip Gaji PDF</button>
+                </div>
+                
+                <div id="no-data-for-month" class="text-center py-16 hidden glass-card"><i class="fas fa-calendar-times text-5xl text-slate-400 mb-4"></i><p class="font-semibold text-lg">Tidak ada laporan untuk periode ini.</p></div>
+            </div>
+            <div id="empty-state" class="text-center py-16 glass-card"><i class="fas fa-folder-open text-6xl text-slate-400 mb-5"></i><p class="font-semibold text-xl">Dashboard Kosong</p><p class="text-sm text-slate-500 mt-2">Mulai sesi kerja baru untuk melihat laporan Anda di sini.</p></div>
+        </main>
+    </div>
+    
+    <!-- Modals -->
+    <div id="message-modal" class="fixed inset-0 modal-bg items-center justify-center hidden z-50 p-4">
+         <div class="glass-card p-8 w-full max-w-sm m-4 fade-in text-center">
+            <div id="message-modal-icon" class="mb-5"></div>
+            <h3 id="message-modal-title" class="text-xl font-bold"></h3>
+            <p id="message-modal-text" class="text-sm text-slate-400 mt-2 mb-6"></p>
+            <button id="message-modal-close-btn" class="btn btn-primary w-full">Tutup</button>
+        </div>
+    </div>
+    <div id="detail-modal" class="fixed inset-0 modal-bg items-center justify-center hidden z-50 p-4 overflow-y-auto">
+        <div class="glass-card p-6 w-full max-w-2xl m-4 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 id="detail-modal-title" class="text-xl font-bold">Detail Laporan</h2>
+                    <p id="detail-modal-info" class="text-sm text-slate-400"></p>
+                </div>
+                <button id="close-detail-modal-btn" class="text-slate-400 hover:text-white h-8 w-8 text-2xl">&times;</button>
+            </div>
+            <div id="detail-modal-ritase-table" class="overflow-x-auto bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-white/10 shadow-inner"></div>
+            <div class="mt-6 flex gap-4">
+                <button id="close-detail-modal-btn-2" class="btn btn-gray w-1/3">Tutup</button>
+                <button id="export-single-pdf-btn" class="btn btn-danger w-2/3"><i class="fas fa-file-pdf mr-2"></i>Export PDF</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirm-modal" class="fixed inset-0 modal-bg items-center justify-center hidden z-50 p-4">
+         <div class="glass-card p-8 w-full max-w-sm m-4 fade-in text-center">
+            <div class="mb-4"><i class="fas fa-exclamation-triangle text-6xl text-yellow-400"></i></div>
+            <h3 id="confirm-modal-title" class="text-lg font-bold"></h3>
+            <p id="confirm-modal-text" class="text-sm text-slate-400 mt-2 mb-6"></p>
+            <div class="flex gap-4">
+                <button id="confirm-modal-cancel-btn" class="btn btn-gray w-1/2">Batal</button>
+                <button id="confirm-modal-confirm-btn" class="btn btn-danger w-1/2">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    // --- Inisialisasi Supabase & Variabel Global ---
+    const SUPABASE_URL = 'https://hwajcditsdmebqmflqsm.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3YWpjZGl0c2RtZWJxbWZscXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTMzOTEsImV4cCI6MjA2OTA2OTM5MX0.Puq5NWeNHdtHlE8bem4QUqvIcHVyqR_AR5IlpiG-hz8';
+
+    const GAJI_POKOK = 3703206;
+    const TARIF_PER_JAM = 15000;
+    const TARIF_RITASE_OB = 400;
+    const TARIF_RITASE_COAL = 1250;
+    const PERSEN_POTONGAN_KESEHATAN = 0.01; // 1%
+    const PERSEN_POTONGAN_KERJA = 0.03; // 3%
+
+    let _supabase;
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('URL_ANDA')) {
+        const { createClient } = supabase;
+        _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
+    // --- IndexedDB Database Logic ---
+    const DB_NAME = 'LaporanKerjaDB_v6_Offline'; // Versi baru
+    const DB_VERSION = 1;
+    let db;
+
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('reports')) {
+                    const store = db.createObjectStore('reports', { keyPath: 'id' });
+                    store.createIndex('status', 'status', { unique: false });
+                }
+            };
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                console.log('Database IndexedDB initialized.');
+                resolve(db);
+            };
+            request.onerror = (event) => reject('Database error: ' + event.target.error);
+        });
+    }
+
+    function dbAction(storeName, mode, action) {
+        return new Promise((resolve, reject) => {
+            if (!db) { reject("Database not initialized"); return; }
+            const transaction = db.transaction(storeName, mode);
+            const store = transaction.objectStore(storeName);
+            action(store, resolve, reject);
+            transaction.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    const localDb = {
+        getReports: () => dbAction('reports', 'readonly', (store, resolve) => store.getAll().onsuccess = (e) => resolve(e.target.result)),
+        saveReport: (report) => dbAction('reports', 'readwrite', (store, resolve) => store.put(report).onsuccess = resolve),
+        deleteReport: (id) => dbAction('reports', 'readwrite', (store, resolve) => store.delete(id).onsuccess = resolve),
+        getPending: () => dbAction('reports', 'readonly', (store, resolve, reject) => { 
+            const index = store.index('status');
+            const creationsRequest = index.getAll('pending_creation');
+            const deletionsRequest = index.getAll('pending_deletion');
+            
+            Promise.all([
+                new Promise((res, rej) => { creationsRequest.onsuccess = e => res(e.target.result); creationsRequest.onerror = e => rej(e.target.error); }),
+                new Promise((res, rej) => { deletionsRequest.onsuccess = e => res(e.target.result); deletionsRequest.onerror = e => rej(e.target.error); })
+            ]).then(([creations, deletions]) => resolve({ creations, deletions }))
+              .catch(reject);
+        }),
+        clear: () => dbAction('reports', 'readwrite', (store, resolve) => store.clear().onsuccess = resolve)
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // --- PWA Install Logic ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                installBtn.classList.add('hidden');
+            }
+        });
+
+        // --- Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered.', reg))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+
+        if (!_supabase) {
+            document.body.innerHTML = `<div style="padding: 2rem; text-align: center; font-family: sans-serif;"><h1>Konfigurasi Supabase Diperlukan</h1><p>Silakan edit file index.html dan masukkan URL serta Kunci Anon Supabase Anda.</p></div>`;
+            return;
+        };
+
+        await initDB();
+
+        // --- ELEMENT SELECTORS ---
+        const el = (selector) => document.querySelector(selector);
+        const authPage = el('#auth-page'), appPage = el('#app-page');
+        const loginForm = el('#login-form'), registerForm = el('#register-form');
+        const showRegisterLink = el('#show-register-link'), showLoginLink = el('#show-login-link');
+        const logoutBtn = el('#logout-btn');
+        const userNameEl = el('#user-name'), userEmailEl = el('#user-email');
+        
+        const timesheetForm = el('#timesheet-form');
+        const step1Div = el('#step-1'), step2Div = el('#step-2');
+        const startSessionBtn = el('#start-session-btn'), cancelSessionBtn = el('#cancel-session-btn');
+        const step1Summary = el('#step-1-summary');
+        const tanggalInput = el('#tanggal'), shiftInput = el('#shift'), jenisMuatanInput = el('#jenis-muatan');
+        const metodeInput = el('#metode'), hmAwalInput = el('#hm-awal'), hmAkhirInput = el('#hm-akhir');
+        const jamMulaiInput = el('#jam-mulai'), jamSelesaiInput = el('#jam-selesai'), jamIstirahatInput = el('#jam-istirahat');
+        const hmInputs = el('#hm-inputs'), jamDuniaInputs = el('#jam-dunia-inputs');
+        
+        const recordRitaseBtn = el('#record-ritase-btn'), ritaseTableBody = el('#ritase-table-body');
+        const currentTimeEl = el('#current-time');
+        
+        const reportSection = el('#report-section'), reportListContainer = el('#report-list-container');
+        const emptyState = el('#empty-state'), noDataForMonth = el('#no-data-for-month');
+        const totalCard = el('#total-card'), grandTotalJamEl = el('#grand-total-jam');
+        const mainMonthFilter = el('#main-month-filter');
+        
+        const exportSection = el('#export-section'), exportPdfBtn = el('#export-pdf-btn');
+
+        const messageModal = el('#message-modal'), messageModalCloseBtn = el('#message-modal-close-btn');
+        const messageModalTitle = el('#message-modal-title'), messageModalText = el('#message-modal-text');
+        
+        const detailModal = el('#detail-modal'), closeDetailModalBtn = el('#close-detail-modal-btn'), closeDetailModalBtn2 = el('#close-detail-modal-btn-2');
+        const detailModalTitle = el('#detail-modal-title'), detailModalInfo = el('#detail-modal-info'), detailModalRitaseTable = el('#detail-modal-ritase-table');
+        const exportSinglePdfBtn = el('#export-single-pdf-btn');
+        
+        const confirmModal = el('#confirm-modal'), confirmModalCancelBtn = el('#confirm-modal-cancel-btn'), confirmModalConfirmBtn = el('#confirm-modal-confirm-btn');
+        const confirmModalTitle = el('#confirm-modal-title'), confirmModalText = el('#confirm-modal-text');
+
+        const themeToggle = el('#theme-toggle'), themeIconSun = el('#theme-icon-sun'), themeIconMoon = el('#theme-icon-moon');
+
+        // --- APP STATE ---
+        let allReports = [];
+        let currentSessionRitase = {};
+        let clockInterval;
+        let confirmCallback = null;
+        let currentUser = null;
+        const SESSION_KEY = 'activeWorkSession';
+
+        // --- THEME LOGIC ---
+        const applyTheme = (theme) => {
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            themeIconSun.classList.toggle('hidden', theme === 'dark');
+            themeIconMoon.classList.toggle('hidden', theme !== 'dark');
+            localStorage.setItem('theme', theme);
+        };
+        themeToggle.addEventListener('click', () => applyTheme(localStorage.getItem('theme') === 'dark' ? 'light' : 'dark'));
+        applyTheme(localStorage.getItem('theme') || 'light');
+
+        // --- UTILITY FUNCTIONS ---
+        const showMessage = (title, text, isError = false) => {
+            messageModalTitle.textContent = title;
+            messageModalText.textContent = text;
+            el('#message-modal-icon').innerHTML = isError 
+                ? `<i class="fas fa-times-circle text-6xl text-rose-500"></i>` 
+                : `<i class="fas fa-check-circle text-6xl text-teal-500"></i>`;
+            messageModal.classList.replace('hidden', 'flex');
+        };
+
+        const sanitizeHTML = (str) => {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        };
+
+        const formatDate = (dateString, long = false) => {
+            const date = new Date(dateString);
+            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+            const correctedDate = new Date(date.getTime() + userTimezoneOffset);
+            const options = long 
+                ? { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+                : { day: '2-digit', month: 'short', year: 'numeric' };
+            return correctedDate.toLocaleDateString('id-ID', options);
+        };
+        
+        const formatCurrency = (number) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+        };
+        
+        // --- SINKRONISASI & DATA LOGIC ---
+        async function syncToServer() {
+            if (!navigator.onLine || !_supabase) { return; }
+            const { creations, deletions } = await localDb.getPending();
+            if (deletions.length > 0) {
+                const { error } = await _supabase.from('reports').delete().in('id', deletions.map(r => r.id));
+                if (!error) { for (const id of deletions.map(r => r.id)) await localDb.deleteReport(id); }
+            }
+            if (creations.length > 0) {
+                const reportsToCreate = creations.map(r => { const { status, ...d } = r; return d; });
+                const { error } = await _supabase.from('reports').upsert(reportsToCreate, { onConflict: 'id' });
+                if (!error) {
+                    for (const report of creations) {
+                        report.status = 'synced';
+                        await localDb.saveReport(report);
+                    }
+                }
+            }
+            await fetchFromServer();
+            await updateMainView();
+        }
+
+        async function fetchFromServer() {
+            if (!navigator.onLine || !_supabase || !currentUser) { return; }
+            const { data: serverReports, error } = await _supabase.from('reports').select('*').eq('user_id', currentUser.id);
+            if (error) { return; }
+            
+            const localReports = await localDb.getReports();
+            const localReportMap = new Map(localReports.map(r => [r.id, r]));
+            for(const serverReport of serverReports) {
+                serverReport.status = 'synced';
+                localReportMap.set(serverReport.id, serverReport);
+            }
+            await dbAction('reports', 'readwrite', (store, resolve) => {
+                const clearRequest = store.clear();
+                clearRequest.onsuccess = () => {
+                     const reportsToSave = Array.from(localReportMap.values());
+                     if(reportsToSave.length === 0) { resolve(); return; }
+                     let count = 0;
+                     reportsToSave.forEach(report => {
+                         const putRequest = store.put(report);
+                         putRequest.onsuccess = () => { if(++count === reportsToSave.length) resolve(); };
+                     });
+                };
+            });
+        }
+
+        // --- AUTHENTICATION LOGIC ---
+        const handleAuthStateChange = async (event, session) => {
+            const user = session?.user;
+            if (user) {
+                currentUser = user;
+                authPage.classList.add('hidden');
+                appPage.classList.remove('hidden');
+                userNameEl.innerHTML = sanitizeHTML(user.user_metadata?.name || user.email);
+                userEmailEl.innerHTML = sanitizeHTML(user.email);
+                
+                if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                    await syncToServer();
+                    await updateMainView();
+                    restoreActiveSession();
+                }
+            } else {
+                currentUser = null;
+                appPage.classList.add('hidden');
+                authPage.classList.remove('hidden');
+                await localDb.clear();
+                allReports = [];
+                updateMainView();
+                if(clockInterval) clearInterval(clockInterval);
+                localStorage.removeItem(SESSION_KEY);
+            }
+        };
+
+        if(_supabase) _supabase.auth.onAuthStateChange(handleAuthStateChange);
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = el('#login-email').value;
+            const password = el('#login-password').value;
+            const { error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) showMessage('Login Gagal', error.message, true);
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = el('#register-name').value;
+            const email = el('#register-email').value;
+            const password = el('#register-password').value;
+            const { error } = await _supabase.auth.signUp({ 
+                email, 
+                password,
+                options: { data: { name: sanitizeHTML(name) } }
+            });
+            if (error) showMessage('Pendaftaran Gagal', error.message, true);
+            else {
+                showMessage('Pendaftaran Berhasil', 'Silakan cek email Anda untuk verifikasi dan kemudian login.');
+                registerForm.reset();
+                showLoginLink.click();
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => await _supabase.auth.signOut());
+        showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); });
+        showLoginLink.addEventListener('click', (e) => { e.preventDefault(); registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+        
+        // --- CORE APP LOGIC ---
+        async function updateMainView() {
+            allReports = await localDb.getReports() || [];
+            allReports = allReports.filter(r => r.status !== 'pending_deletion');
+            allReports.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+            
+            const hasAnyReport = allReports.length > 0;
+            reportSection.classList.toggle('hidden', !hasAnyReport);
+            emptyState.classList.toggle('hidden', hasAnyReport);
+
+            if (hasAnyReport) {
+                populateMainMonthFilter();
+                const selectedMonth = mainMonthFilter.value || (allReports[0] ? allReports[0].tanggal.substring(0, 7) : '');
+                if (mainMonthFilter.value !== selectedMonth) mainMonthFilter.value = selectedMonth;
+                const filtered = allReports.filter(r => r.tanggal.startsWith(selectedMonth));
+                renderFilteredReports(filtered);
+            } else {
+                renderFilteredReports([]);
+            }
+        }
+
+        timesheetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const metode = metodeInput.value;
+            if (!metode) { showMessage('Data Tidak Lengkap', 'Metode Perhitungan Jam wajib dipilih.', true); return; }
+            
+            let newReport = {
+                id: Date.now().toString(),
+                user_id: currentUser.id,
+                nama_operator: userNameEl.textContent,
+                tanggal: tanggalInput.value, shift: shiftInput.value, jenis_muatan: jenisMuatanInput.value,
+                unit_type: sanitizeHTML(el('#unit-type').value.toUpperCase()),
+                unit_id: sanitizeHTML(el('#unit-id').value.toUpperCase()),
+                note: sanitizeHTML(el('#note').value),
+                metode: metode,
+                ritase: { ...currentSessionRitase },
+                status: 'pending_creation'
+            };
+
+            if (metode === 'hm') {
+                const hmAwal = parseFloat(hmAwalInput.value);
+                const hmAkhir = parseFloat(hmAkhirInput.value);
+                if (isNaN(hmAwal) || isNaN(hmAkhir) || hmAwal < 0 || hmAkhir < 0 || hmAkhir <= hmAwal) { 
+                    showMessage('Data Tidak Valid', 'HM Awal dan Akhir harus angka valid dan HM Akhir > HM Awal.', true); return; 
+                }
+                newReport.jam_kerja = hmAkhir - hmAwal;
+                newReport.hm_awal = hmAwal;
+                newReport.hm_akhir = hmAkhir;
+            } else {
+                const jamMulai = jamMulaiInput.value, jamSelesai = jamSelesaiInput.value;
+                const jamIstirahat = parseFloat(jamIstirahatInput.value);
+                if (isNaN(jamIstirahat) || jamIstirahat < 0 || !jamMulai || !jamSelesai) { 
+                    showMessage('Data Tidak Lengkap', 'Jam Mulai, Selesai, dan Istirahat harus valid.', true); return; 
+                }
+                
+                const t1 = new Date(`${tanggalInput.value}T${jamMulai}`);
+                let t2 = new Date(`${tanggalInput.value}T${jamSelesai}`);
+                if (t2 < t1) { t2.setDate(t2.getDate() + 1); }
+
+                const jamKerja = ((t2 - t1) / (1000 * 60 * 60)) - jamIstirahat;
+                if (jamKerja < 0) { showMessage('Data Tidak Valid', 'Total jam kerja tidak boleh negatif.', true); return; }
+                newReport.jam_kerja = jamKerja;
+                newReport.jam_mulai = jamMulai;
+                newReport.jam_selesai = jamSelesai;
+                newReport.jam_istirahat = jamIstirahat;
+            }
+            
+            await localDb.saveReport(newReport);
+            await updateMainView(); 
+            resetForm();
+            showMessage('Sukses', 'Laporan kerja berhasil disimpan secara lokal.');
+            await syncToServer();
+        });
+
+        reportListContainer.addEventListener('click', async (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            const reportCard = e.target.closest('.report-card');
+            
+            if (deleteBtn) {
+                e.stopPropagation();
+                const reportId = deleteBtn.dataset.id;
+                showConfirm('Konfirmasi Hapus', 'Apakah Anda yakin ingin menghapus laporan ini?', async () => {
+                    const report = await dbAction('reports', 'readonly', (store, resolve) => store.get(reportId).onsuccess = e => resolve(e.target.result));
+                    if (report) {
+                        if(report.status === 'pending_creation'){
+                             await localDb.deleteReport(reportId);
+                        } else {
+                            report.status = 'pending_deletion';
+                            await localDb.saveReport(report);
+                        }
+                        await updateMainView();
+                        showMessage('Laporan Dihapus', 'Laporan telah ditandai untuk dihapus.');
+                        await syncToServer();
+                    }
+                });
+            } else if (reportCard) {
+                const reportId = reportCard.dataset.reportId;
+                const report = allReports.find(r => r.id === reportId);
+                if (report) { showReportDetail(report); }
+            }
+        });
+
+        window.addEventListener('online', syncToServer);
+        
+        function renderFilteredReports(filteredReports) {
+            reportListContainer.innerHTML = '';
+            const hasFilteredReports = filteredReports.length > 0;
+            noDataForMonth.classList.toggle('hidden', !hasFilteredReports);
+            totalCard.classList.toggle('hidden', !hasFilteredReports);
+            exportSection.classList.toggle('hidden', !hasFilteredReports);
+            
+            if (hasFilteredReports) {
+                filteredReports.forEach(report => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-card p-5 fade-in cursor-pointer report-card relative';
+                    card.dataset.reportId = report.id;
+                    const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
+                    const muatanTagColor = report.jenis_muatan === 'COAL' ? 'bg-slate-800 text-white' : 'bg-amber-400 text-amber-900';
+                    const syncStatusIcon = report.status === 'pending_creation'
+                        ? `<i class="fas fa-cloud-upload-alt text-yellow-500 absolute top-4 left-4" title="Menunggu sinkronisasi"></i>`
+                        : '';
+                    
+                    card.innerHTML = `
+                        ${syncStatusIcon}
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-lg">${sanitizeHTML(report.nama_operator)}</p>
+                                <p class="text-sm text-slate-500 dark:text-slate-400">${formatDate(report.tanggal, true)}</p>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-4">
+                                <span class="text-xs font-bold px-3 py-1 rounded-full ${muatanTagColor}">${sanitizeHTML(report.jenis_muatan)}</span>
+                                <p class="text-xs text-slate-400 mt-1">${sanitizeHTML(report.shift)}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-black/5 dark:border-white/5 grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p class="text-xs text-slate-500">Unit</p>
+                                <p class="font-bold">${sanitizeHTML(report.unit_id)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500">Jam Efektif</p>
+                                <p class="font-black text-teal-500 text-2xl tracking-tighter">${report.jam_kerja.toFixed(2)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500">Total Ritase</p>
+                                <p class="font-black text-indigo-500 text-2xl tracking-tighter">${ritaseCount}</p>
+                            </div>
+                        </div>
+                        <button data-id="${report.id}" class="delete-btn absolute -top-1 -right-1 text-slate-400 hover:text-rose-500 h-8 w-8 rounded-full bg-white dark:bg-slate-800 shadow-md hover:bg-rose-500/10 transition-colors flex items-center justify-center">
+                            <i class="fas fa-trash-alt fa-sm"></i>
+                        </button>
+                    `;
+                    reportListContainer.appendChild(card);
+                });
+            }
+            const monthlyTotal = filteredReports.reduce((total, r) => total + r.jam_kerja, 0);
+            grandTotalJamEl.textContent = monthlyTotal.toFixed(2);
+        }
+
+        function populateMainMonthFilter() {
+            const currentFilterValue = mainMonthFilter.value;
+            mainMonthFilter.innerHTML = '';
+            if (allReports.length === 0) return;
+
+            const availableMonths = [...new Set(allReports.map(r => r.tanggal.substring(0, 7)))];
+            
+            availableMonths.forEach(monthStr => {
+                const option = document.createElement('option');
+                const date = new Date(monthStr + '-02T00:00:00');
+                option.value = monthStr;
+                option.textContent = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                mainMonthFilter.appendChild(option);
+            });
+
+            if (availableMonths.includes(currentFilterValue)) {
+                mainMonthFilter.value = currentFilterValue;
+            } else if (availableMonths.length > 0) {
+                mainMonthFilter.value = availableMonths[0];
+            }
+        }
+        mainMonthFilter.addEventListener('change', () => { 
+            const selectedMonth = mainMonthFilter.value;
+            const filtered = allReports.filter(r => r.tanggal.startsWith(selectedMonth));
+            renderFilteredReports(filtered);
+        });
+
+        function resetForm() {
+            timesheetForm.reset();
+            const today = new Date();
+            today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+            tanggalInput.value = today.toISOString().slice(0, 10);
+            
+            shiftInput.value = "";
+            metodeInput.value = "";
+            jenisMuatanInput.value = "";
+            hmInputs.classList.add('hidden');
+            jamDuniaInputs.classList.add('hidden');
+            currentSessionRitase = {};
+            ritaseTableBody.innerHTML = '';
+            step2Div.classList.add('hidden');
+            step1Div.classList.remove('hidden');
+            if (clockInterval) clearInterval(clockInterval);
+            localStorage.removeItem(SESSION_KEY);
+        }
+        startSessionBtn.addEventListener('click', () => {
+            if (!tanggalInput.value || !shiftInput.value || !jenisMuatanInput.value) {
+                showMessage('Data Kurang', 'Silakan isi Tanggal, Shift, dan Jenis Muatan untuk memulai.', true);
+                return;
+            }
+            currentSessionRitase = createInitialRitaseData(shiftInput.value);
+            localStorage.setItem(SESSION_KEY, JSON.stringify({
+                tanggal: tanggalInput.value,
+                shift: shiftInput.value,
+                jenisMuatan: jenisMuatanInput.value,
+                ritase: currentSessionRitase
+            }));
+            activateStep2();
+        });
+
+        function restoreActiveSession() {
+            const savedSession = localStorage.getItem(SESSION_KEY);
+            if (savedSession) {
+                try {
+                    const sessionData = JSON.parse(savedSession);
+                    tanggalInput.value = sessionData.tanggal;
+                    shiftInput.value = sessionData.shift;
+                    jenisMuatanInput.value = sessionData.jenisMuatan;
+                    currentSessionRitase = sessionData.ritase;
+                    
+                    showMessage('Sesi Dipulihkan', 'Sesi kerja Anda yang belum selesai telah dipulihkan.');
+                    activateStep2();
+                } catch (e) {
+                    console.error("Gagal memulihkan sesi:", e);
+                    localStorage.removeItem(SESSION_KEY);
+                }
+            }
+        }
+
+        function activateStep2() {
+            step1Div.classList.add('hidden');
+            step2Div.classList.remove('hidden');
+            step1Summary.innerHTML = `Laporan untuk: ${formatDate(tanggalInput.value, true)}, Shift ${sanitizeHTML(shiftInput.value)}, Muatan ${sanitizeHTML(jenisMuatanInput.value)}`;
+            renderRitaseTable(ritaseTableBody, currentSessionRitase, shiftInput.value);
+            updateClock();
+            if (clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(updateClock, 1000);
+        }
+        function createInitialRitaseData(shift) {
+            const initialData = {};
+            const startHour = (shift === 'Siang') ? 7 : 19;
+            for (let i = 0; i < 12; i++) {
+                let hour = startHour + i;
+                if (hour >= 24) hour -= 24;
+                const hourString = hour.toString().padStart(2, '0') + ':00';
+                initialData[hourString] = [];
+            }
+            return initialData;
+        }
+        function renderRitaseTable(container, ritaseData, shift) {
+            container.innerHTML = '';
+            const hourKeys = Object.keys(ritaseData).sort((a, b) => {
+                let hourA = parseInt(a.split(':')[0]);
+                let hourB = parseInt(b.split(':')[0]);
+                if (shift === 'Malam') {
+                    if (hourA >= 7 && hourA <= 18) hourA += 24;
+                    if (hourB >= 7 && hourB <= 18) hourB += 24;
+                }
+                return hourA - hourB;
+            });
+            hourKeys.forEach(hourKey => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-black/5 dark:border-white/5 last:border-b-0 hover:bg-black/5 dark:hover:bg-white/5';
+                const ritaseEntries = ritaseData[hourKey] || [];
+                row.innerHTML = `
+                    <td class="p-3 font-medium">${hourKey}</td>
+                    <td class="p-3">${ritaseEntries.sort().join(', ') || '<span class="text-slate-500">-</span>'}</td>
+                `;
+                container.appendChild(row);
+            });
+        }
+        function updateClock() {
+            currentTimeEl.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const isWithinShift = checkIsWithinShift(shiftInput.value);
+            recordRitaseBtn.disabled = !isWithinShift;
+            recordRitaseBtn.title = isWithinShift ? 'Catat waktu ritase saat ini' : 'Di luar jam shift yang dipilih';
+        }
+        function checkIsWithinShift(shift) {
+            const currentHour = new Date().getHours();
+            if (shift === 'Siang') {
+                return currentHour >= 7 && currentHour < 19;
+            } else if (shift === 'Malam') {
+                return currentHour >= 19 || currentHour < 7;
+            }
+            return false;
+        }
+         function recordRitase() {
+            const now = new Date();
+            const hourKey = now.getHours().toString().padStart(2, '0') + ':00';
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            if (currentSessionRitase.hasOwnProperty(hourKey)) {
+                currentSessionRitase[hourKey].push(minutes);
+                renderRitaseTable(ritaseTableBody, currentSessionRitase, shiftInput.value);
+                try {
+                    const sessionData = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
+                    sessionData.ritase = currentSessionRitase;
+                    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+                } catch(e) {
+                    console.error("Gagal memperbarui sesi di localStorage:", e);
+                }
+            } else {
+                 showMessage("Di Luar Jam Kerja", `Jam ${hourKey} tidak termasuk dalam shift yang dipilih.`, true);
+            }
+        }
+        cancelSessionBtn.addEventListener('click', () => {
+            showConfirm('Batalkan Sesi?', 'Semua data ritase yang belum disimpan akan hilang. Anda yakin?', () => {
+                resetForm();
+            });
+        });
+        recordRitaseBtn.addEventListener('click', recordRitase);
+        
+        function showReportDetail(report) {
+            detailModalTitle.textContent = `Detail Laporan`;
+            detailModalInfo.innerHTML = `${formatDate(report.tanggal, true)} | Unit: ${sanitizeHTML(report.unit_id)}`;
+            const detailTableContainer = document.createElement('table');
+            detailTableContainer.className = 'w-full text-sm';
+            detailTableContainer.innerHTML = `<thead class="bg-black/5 dark:bg-white/5"><tr><th class="p-2 font-semibold text-left w-1/4">Waktu</th><th class="p-2 font-semibold text-left">Ritase Tercatat (Menit)</th></tr></thead>`;
+            const detailTbody = document.createElement('tbody');
+            renderRitaseTable(detailTbody, report.ritase, report.shift);
+            detailTableContainer.appendChild(detailTbody);
+            detailModalRitaseTable.innerHTML = '';
+            detailModalRitaseTable.appendChild(detailTableContainer);
+            detailModal.dataset.reportId = report.id;
+            detailModal.classList.replace('hidden', 'flex');
+        }
+        function showConfirm(title, text, callback) {
+            confirmModalTitle.textContent = title;
+            confirmModalText.textContent = text;
+            confirmCallback = callback;
+            confirmModal.classList.replace('hidden', 'flex');
+        }
+        messageModalCloseBtn.addEventListener('click', () => messageModal.classList.replace('flex', 'hidden'));
+        closeDetailModalBtn.addEventListener('click', () => detailModal.classList.replace('flex', 'hidden'));
+        closeDetailModalBtn2.addEventListener('click', () => detailModal.classList.replace('flex', 'hidden'));
+        confirmModalCancelBtn.addEventListener('click', () => { confirmModal.classList.replace('flex', 'hidden'); confirmCallback = null; });
+        confirmModalConfirmBtn.addEventListener('click', () => {
+            if (typeof confirmCallback === 'function') confirmCallback();
+            confirmModal.classList.replace('flex', 'hidden');
+            confirmCallback = null;
+        });
+        exportSinglePdfBtn.addEventListener('click', () => {
+             const reportId = detailModal.dataset.reportId;
+             const report = allReports.find(r => r.id === reportId);
+             if(report) exportSingleReportToPdf(report);
+        });
+        metodeInput.addEventListener('change', (e) => {
+            hmInputs.classList.toggle('hidden', e.target.value !== 'hm');
+            jamDuniaInputs.classList.toggle('hidden', e.target.value !== 'jam_dunia');
+        });
+        
+        function exportSingleReportToPdf(report) {
+             const { jsPDF } = window.jspdf; 
+             const doc = new jsPDF();
+             const pageW = doc.internal.pageSize.getWidth();
+             const primaryColor = '#0d9488';
+             
+             doc.setFillColor(primaryColor);
+             doc.rect(0, 0, pageW, 30, 'F');
+             doc.setFont('helvetica', 'bold');
+             doc.setFontSize(18);
+             doc.setTextColor(255, 255, 255);
+             doc.text('DETAIL LAPORAN KERJA', pageW / 2, 15, { align: 'center' });
+             doc.setFontSize(10);
+             doc.text(formatDate(report.tanggal, true), pageW / 2, 23, { align: 'center' });
+             
+             const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
+             const infoBody = [
+                 ['Nama Operator', sanitizeHTML(report.nama_operator.toUpperCase())],
+                 ['Unit', `${sanitizeHTML(report.unit_id)} (${sanitizeHTML(report.unit_type)})`],
+                 ['Shift / Muatan', `${sanitizeHTML(report.shift)} / ${sanitizeHTML(report.jenis_muatan)}`],
+             ];
+             if(report.metode === 'hm') {
+                 infoBody.push(['HM Awal', report.hm_awal ? report.hm_awal.toFixed(2) : '-']);
+                 infoBody.push(['HM Akhir', report.hm_akhir ? report.hm_akhir.toFixed(2) : '-']);
+             } else {
+                 infoBody.push(['Jam Mulai', report.jam_mulai || '-']);
+                 infoBody.push(['Jam Selesai', report.jam_selesai || '-']);
+                 infoBody.push(['Istirahat', `${report.jam_istirahat || 0} Jam`]);
+             }
+             infoBody.push(['Total Jam Kerja', `${report.jam_kerja.toFixed(2)} Jam`]);
+             infoBody.push(['Total Ritase', `${ritaseCount} Rit`]);
+             
+             doc.autoTable({ startY: 40, body: infoBody, theme: 'grid', styles: { fontSize: 10, cellPadding: 2 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50}, 1: {cellWidth: 'auto'} } });
+             let lastY = doc.lastAutoTable.finalY + 5;
+             
+             doc.setFont('helvetica', 'bold');
+             doc.setFontSize(12);
+             doc.text('Tabel Ritase', 14, lastY);
+             const ritaseHead = [['Waktu', 'Ritase Tercatat (Menit)']];
+             const ritaseBody = Object.keys(report.ritase).sort((a,b) => {
+                let hourA = parseInt(a.split(':')[0]); let hourB = parseInt(b.split(':')[0]);
+                if (report.shift === 'Malam') { if (hourA >= 7 && hourA < 19) hourA += 24; if (hourB >= 7 && hourB < 19) hourB += 24; }
+                return hourA - hourB;
+             }).map(hour => [hour, (report.ritase[hour] || []).sort().join(', ')]);
+             
+             doc.autoTable({ head: ritaseHead, body: ritaseBody, startY: lastY + 2, theme: 'striped', headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, styles: { cellPadding: 2, fontSize: 9, valign: 'top' }, columnStyles: { 0: { cellWidth: 40 } } });
+             lastY = doc.lastAutoTable.finalY + 10;
+             
+             if(report.note) {
+                 doc.setFontSize(10);
+                 doc.setFont('helvetica', 'bold');
+                 doc.text('Catatan:', 14, lastY);
+                 doc.setFont('helvetica', 'normal');
+                 doc.text(doc.splitTextToSize(report.note, pageW - 28), 14, lastY + 5);
+             }
+             doc.save(`Laporan_${report.tanggal}_${report.unit_id}.pdf`);
+             showMessage('Berhasil!', `Laporan PDF untuk tanggal ${formatDate(report.tanggal, true)} berhasil dibuat!`);
+        }
+
+        function exportMonthlySummaryToPdf() {
+            const selectedMonth = mainMonthFilter.value;
+            const filteredReports = allReports
+                .filter(r => r.tanggal.startsWith(selectedMonth))
+                .sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+            if (filteredReports.length === 0) {
+                showMessage('Tidak Ada Data', 'Tidak ada data laporan untuk diexport pada periode ini.', true);
+                return;
+            }
+
+            let totalJamKerja = 0;
+            let totalRitaseOB = 0;
+            let totalRitaseCOAL = 0;
+            
+            filteredReports.forEach(report => {
+                totalJamKerja += report.jam_kerja;
+                const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
+                if (report.jenis_muatan === 'OB') {
+                    totalRitaseOB += ritaseCount;
+                } else if (report.jenis_muatan === 'COAL') {
+                    totalRitaseCOAL += ritaseCount;
+                }
+            });
+
+            const gajiLembur = totalJamKerja * TARIF_PER_JAM;
+            const bonusRitaseOB = totalRitaseOB * TARIF_RITASE_OB;
+            const bonusRitaseCOAL = totalRitaseCOAL * TARIF_RITASE_COAL;
+            
+            const potonganKesehatan = GAJI_POKOK * PERSEN_POTONGAN_KESEHATAN;
+            const potonganKerja = GAJI_POKOK * PERSEN_POTONGAN_KERJA;
+
+            const totalPendapatanKotor = GAJI_POKOK + gajiLembur + bonusRitaseOB + bonusRitaseCOAL;
+            const totalPotongan = potonganKesehatan + potonganKerja;
+            const pendapatanBersih = totalPendapatanKotor - totalPotongan;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const pageW = doc.internal.pageSize.getWidth();
+            const primaryColor = '#0d9488';
+            const periodDate = new Date(selectedMonth + '-02T00:00:00');
+            const periodText = periodDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            
+            // Header
+            doc.setFillColor(primaryColor);
+            doc.rect(0, 0, pageW, 30, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(18);
+            doc.setTextColor(255, 255, 255);
+            doc.text('SLIP GAJI OPERATOR', pageW / 2, 15, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`Periode: ${periodText}`, pageW / 2, 23, { align: 'center' });
+            
+            // Info Karyawan
+            doc.setFontSize(10);
+            doc.setTextColor(0,0,0);
+            doc.text(`Nama: ${sanitizeHTML(currentUser.user_metadata?.name || currentUser.email)}`, 14, 40);
+            doc.text(`Email: ${sanitizeHTML(currentUser.email)}`, 14, 45);
+
+            // Rincian Pendapatan
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('A. PENDAPATAN', 14, 60);
+            const pendapatanBody = [
+                ['Gaji Pokok', '', formatCurrency(GAJI_POKOK)],
+                ['Insentif HM (Lembur)', `${totalJamKerja.toFixed(2)} jam x ${formatCurrency(TARIF_PER_JAM)}`, formatCurrency(gajiLembur)],
+                ['Insentif OB', `${totalRitaseOB} rit x ${formatCurrency(TARIF_RITASE_OB)}`, formatCurrency(bonusRitaseOB)],
+                ['Insentif CG', `${totalRitaseCOAL} rit x ${formatCurrency(TARIF_RITASE_COAL)}`, formatCurrency(bonusRitaseCOAL)],
+            ];
+            doc.autoTable({
+                body: pendapatanBody, startY: 65, theme: 'plain', styles: { fontSize: 10 },
+                columnStyles: { 0: {cellWidth: 60}, 1: {cellWidth: 60}, 2: { halign: 'right' } }
+            });
+            let lastY = doc.lastAutoTable.finalY;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Pendapatan Kotor', 14, lastY + 5);
+            doc.text(formatCurrency(totalPendapatanKotor), pageW - 14, lastY + 5, { align: 'right' });
+
+            // Rincian Potongan
+            lastY += 15;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('B. POTONGAN', 14, lastY);
+            const potonganBody = [
+                ['BPJS Kesehatan (1%)', '', formatCurrency(potonganKesehatan)],
+                ['BPJS Ketenagakerjaan (3%)', '', formatCurrency(potonganKerja)],
+            ];
+            doc.autoTable({
+                body: potonganBody, startY: lastY + 5, theme: 'plain', styles: { fontSize: 10 },
+                columnStyles: { 0: {cellWidth: 60}, 1: {cellWidth: 60}, 2: { halign: 'right' } }
+            });
+            lastY = doc.lastAutoTable.finalY;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Potongan', 14, lastY + 5);
+            doc.text(formatCurrency(totalPotongan), pageW - 14, lastY + 5, { align: 'right' });
+
+            // Take Home Pay
+            lastY += 15;
+            doc.setFillColor(230, 240, 255);
+            doc.rect(14, lastY - 5, pageW - 28, 12, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(0,0,0);
+            doc.text('PENDAPATAN BERSIH (Take Home Pay)', 16, lastY + 2);
+            doc.text(formatCurrency(pendapatanBersih), pageW - 16, lastY + 2, { align: 'right' });
+            
+            lastY += 10;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`Dokumen ini dibuat secara otomatis oleh sistem pada ${new Date().toLocaleString('id-ID')}`, 14, lastY + 10);
+            
+            doc.addPage();
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('Lampiran: Log Kerja Harian', 14, 20);
+            const detailHead = [['Tanggal', 'Unit ID', 'Tipe', 'Jam Kerja', 'Jml Ritase']];
+            const detailBody = filteredReports.map(report => {
+                const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
+                return [ formatDate(report.tanggal), sanitizeHTML(report.unit_id), sanitizeHTML(report.jenis_muatan), report.jam_kerja.toFixed(2), ritaseCount ];
+            });
+            doc.autoTable({ head: detailHead, body: detailBody, startY: 25, theme: 'striped', headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, styles: { fontSize: 9 }, columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } } });
+
+            doc.save(`SlipGaji_${userNameEl.textContent.replace(/\s/g, '_')}_${selectedMonth}.pdf`);
+            showMessage('Berhasil!', 'Slip Gaji PDF berhasil dibuat!');
+        }
+        
+        exportPdfBtn.addEventListener('click', exportMonthlySummaryToPdf);
+        
+        resetForm();
+    });
+    </script>
+</body>
+</html>
