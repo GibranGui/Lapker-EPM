@@ -13,7 +13,7 @@
     <link href="./css/inter-font.css" rel="stylesheet">
     <link rel="stylesheet" href="./css/fontawesome.min.css">
     
-    <!-- Import Supabase Client Library (Online) -->
+    <!-- Import Supabase Client Library (Lokal) -->
     <script src="./js/supabase.min.js"></script>
     
     <!-- Library PDF Lokal -->
@@ -56,11 +56,13 @@
     </style>
 </head>
 <body>
+    <!-- Tombol Instal PWA -->
     <button id="install-btn" class="btn btn-secondary hidden">
         <i class="fas fa-download mr-2"></i>
         Install Aplikasi
     </button>
 
+    <!-- Hiasan Latar Belakang -->
     <div class="background-shapes fixed top-0 left-0 w-full h-full overflow-hidden z-[-1]">
         <div style="width: 200px; height: 200px; top: 10%; left: 5%;"></div>
         <div style="width: 300px; height: 300px; top: 60%; right: -150px;"></div>
@@ -122,10 +124,10 @@
         </header>
 
         <main class="space-y-8">
-            <!-- Form Section -->
+            <!-- Bagian Form -->
             <div class="glass-card p-6 md:p-8">
                 <form id="timesheet-form">
-                    <!-- Step 1: Initial Info -->
+                    <!-- Langkah 1: Info Awal -->
                     <div id="step-1">
                         <h2 class="section-title"><i class="fas fa-play-circle"></i>Mulai Sesi Kerja Baru</h2>
                         <div class="space-y-5">
@@ -138,7 +140,7 @@
                         </div>
                     </div>
                     
-                    <!-- Step 2: Active Session -->
+                    <!-- Langkah 2: Sesi Aktif -->
                     <div id="step-2" class="hidden">
                          <div class="bg-teal-500/10 p-4 rounded-xl mb-6 flex justify-between items-center border border-teal-500/20">
                             <div>
@@ -193,7 +195,7 @@
                 </form>
             </div>
             
-            <!-- Report Dashboard Section -->
+            <!-- Bagian Dashboard Laporan -->
             <div id="report-section" class="space-y-6 hidden">
                 <div class="glass-card p-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -273,6 +275,7 @@
     const SUPABASE_URL = 'https://hwajcditsdmebqmflqsm.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3YWpjZGl0c2RtZWJxbWZscXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTMzOTEsImV4cCI6MjA2OTA2OTM5MX0.Puq5NWeNHdtHlE8bem4QUqvIcHVyqR_AR5IlpiG-hz8';
 
+    // --- Konstanta Gaji ---
     const GAJI_POKOK = 3703206;
     const TARIF_PER_JAM = 15000;
     const TARIF_RITASE_OB = 400;
@@ -286,8 +289,8 @@
         _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
-    // --- IndexedDB Database Logic ---
-    const DB_NAME = 'LaporanKerjaDB_v6_Offline'; // Versi baru
+    // --- Logika Database IndexedDB ---
+    const DB_NAME = 'LaporanKerjaDB_v7_Offline'; // Versi baru untuk upgrade
     const DB_VERSION = 1;
     let db;
 
@@ -299,47 +302,68 @@
                 if (!db.objectStoreNames.contains('reports')) {
                     const store = db.createObjectStore('reports', { keyPath: 'id' });
                     store.createIndex('status', 'status', { unique: false });
+                    store.createIndex('user_id', 'user_id', { unique: false });
                 }
             };
             request.onsuccess = (event) => {
                 db = event.target.result;
-                console.log('Database IndexedDB initialized.');
+                console.log('Database IndexedDB berhasil diinisialisasi.');
                 resolve(db);
             };
-            request.onerror = (event) => reject('Database error: ' + event.target.error);
+            request.onerror = (event) => reject('Kesalahan database: ' + event.target.error);
         });
     }
 
     function dbAction(storeName, mode, action) {
         return new Promise((resolve, reject) => {
-            if (!db) { reject("Database not initialized"); return; }
-            const transaction = db.transaction(storeName, mode);
-            const store = transaction.objectStore(storeName);
-            action(store, resolve, reject);
-            transaction.onerror = (event) => reject(event.target.error);
+            if (!db) { return reject("Database belum diinisialisasi"); }
+            try {
+                const transaction = db.transaction(storeName, mode);
+                const store = transaction.objectStore(storeName);
+                action(store, resolve, reject);
+                transaction.onerror = (event) => reject(event.target.error);
+            } catch (error) {
+                console.error("Gagal memulai transaksi DB:", error);
+                reject(error);
+            }
         });
     }
 
     const localDb = {
-        getReports: () => dbAction('reports', 'readonly', (store, resolve) => store.getAll().onsuccess = (e) => resolve(e.target.result)),
+        getReports: (userId) => dbAction('reports', 'readonly', (store, resolve) => {
+            const index = store.index('user_id');
+            index.getAll(userId).onsuccess = (e) => resolve(e.target.result);
+        }),
         saveReport: (report) => dbAction('reports', 'readwrite', (store, resolve) => store.put(report).onsuccess = resolve),
         deleteReport: (id) => dbAction('reports', 'readwrite', (store, resolve) => store.delete(id).onsuccess = resolve),
-        getPending: () => dbAction('reports', 'readonly', (store, resolve, reject) => { 
+        getPending: (userId) => dbAction('reports', 'readonly', (store, resolve, reject) => { 
             const index = store.index('status');
             const creationsRequest = index.getAll('pending_creation');
             const deletionsRequest = index.getAll('pending_deletion');
             
             Promise.all([
-                new Promise((res, rej) => { creationsRequest.onsuccess = e => res(e.target.result); creationsRequest.onerror = e => rej(e.target.error); }),
-                new Promise((res, rej) => { deletionsRequest.onsuccess = e => res(e.target.result); deletionsRequest.onerror = e => rej(e.target.error); })
+                new Promise((res, rej) => { creationsRequest.onsuccess = e => res(e.target.result.filter(r => r.user_id === userId)); creationsRequest.onerror = e => rej(e.target.error); }),
+                new Promise((res, rej) => { deletionsRequest.onsuccess = e => res(e.target.result.filter(r => r.user_id === userId)); deletionsRequest.onerror = e => rej(e.target.error); })
             ]).then(([creations, deletions]) => resolve({ creations, deletions }))
               .catch(reject);
         }),
-        clear: () => dbAction('reports', 'readwrite', (store, resolve) => store.clear().onsuccess = resolve)
+        clearUserReports: (userId) => dbAction('reports', 'readwrite', (store, resolve) => {
+            const index = store.index('user_id');
+            const request = index.openCursor(IDBKeyRange.only(userId));
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    cursor.delete();
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+        })
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
-        // --- PWA Install Logic ---
+        // --- Logika Instal PWA ---
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
 
@@ -352,18 +376,19 @@
         installBtn.addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
-                await deferredPrompt.userChoice;
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`Hasil pilihan pengguna: ${outcome}`);
                 deferredPrompt = null;
                 installBtn.classList.add('hidden');
             }
         });
 
-        // --- Service Worker Registration ---
+        // --- Registrasi Service Worker ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker registered.', reg))
-                    .catch(err => console.log('Service Worker registration failed:', err));
+                    .then(reg => console.log('Service Worker terdaftar.', reg))
+                    .catch(err => console.log('Registrasi Service Worker gagal:', err));
             });
         }
 
@@ -374,7 +399,7 @@
 
         await initDB();
 
-        // --- ELEMENT SELECTORS ---
+        // --- SELEKTOR ELEMEN ---
         const el = (selector) => document.querySelector(selector);
         const authPage = el('#auth-page'), appPage = el('#app-page');
         const loginForm = el('#login-form'), registerForm = el('#register-form');
@@ -413,7 +438,7 @@
 
         const themeToggle = el('#theme-toggle'), themeIconSun = el('#theme-icon-sun'), themeIconMoon = el('#theme-icon-moon');
 
-        // --- APP STATE ---
+        // --- STATE APLIKASI ---
         let allReports = [];
         let currentSessionRitase = {};
         let clockInterval;
@@ -421,7 +446,7 @@
         let currentUser = null;
         const SESSION_KEY = 'activeWorkSession';
 
-        // --- THEME LOGIC ---
+        // --- LOGIKA TEMA ---
         const applyTheme = (theme) => {
             document.documentElement.classList.toggle('dark', theme === 'dark');
             themeIconSun.classList.toggle('hidden', theme === 'dark');
@@ -431,7 +456,7 @@
         themeToggle.addEventListener('click', () => applyTheme(localStorage.getItem('theme') === 'dark' ? 'light' : 'dark'));
         applyTheme(localStorage.getItem('theme') || 'light');
 
-        // --- UTILITY FUNCTIONS ---
+        // --- FUNGSI UTILITAS ---
         const showMessage = (title, text, isError = false) => {
             messageModalTitle.textContent = title;
             messageModalText.textContent = text;
@@ -446,29 +471,35 @@
             temp.textContent = str;
             return temp.innerHTML;
         };
-
+        
         const formatDate = (dateString, long = false) => {
             const date = new Date(dateString);
-            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-            const correctedDate = new Date(date.getTime() + userTimezoneOffset);
             const options = long 
-                ? { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-                : { day: '2-digit', month: 'short', year: 'numeric' };
-            return correctedDate.toLocaleDateString('id-ID', options);
+                ? { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
+                : { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' };
+            return date.toLocaleDateString('id-ID', options);
         };
         
         const formatCurrency = (number) => {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
         };
         
-        // --- SINKRONISASI & DATA LOGIC ---
+        // --- LOGIKA SINKRONISASI & DATA ---
         async function syncToServer() {
-            if (!navigator.onLine || !_supabase) { return; }
-            const { creations, deletions } = await localDb.getPending();
+            if (!navigator.onLine || !_supabase || !currentUser) { return; }
+            console.log("Memulai sinkronisasi...");
+            const { creations, deletions } = await localDb.getPending(currentUser.id);
+            
             if (deletions.length > 0) {
                 const { error } = await _supabase.from('reports').delete().in('id', deletions.map(r => r.id));
-                if (!error) { for (const id of deletions.map(r => r.id)) await localDb.deleteReport(id); }
+                if (!error) {
+                    for (const report of deletions) await localDb.deleteReport(report.id);
+                    console.log(`${deletions.length} laporan berhasil dihapus dari server.`);
+                } else {
+                    console.error("Gagal menghapus laporan di server:", error);
+                }
             }
+            
             if (creations.length > 0) {
                 const reportsToCreate = creations.map(r => { const { status, ...d } = r; return d; });
                 const { error } = await _supabase.from('reports').upsert(reportsToCreate, { onConflict: 'id' });
@@ -477,46 +508,39 @@
                         report.status = 'synced';
                         await localDb.saveReport(report);
                     }
+                    console.log(`${creations.length} laporan berhasil dibuat/diperbarui di server.`);
+                } else {
+                     console.error("Gagal membuat/memperbarui laporan di server:", error);
                 }
             }
+            
             await fetchFromServer();
             await updateMainView();
+            console.log("Sinkronisasi selesai.");
         }
 
         async function fetchFromServer() {
             if (!navigator.onLine || !_supabase || !currentUser) { return; }
             const { data: serverReports, error } = await _supabase.from('reports').select('*').eq('user_id', currentUser.id);
-            if (error) { return; }
+            if (error) { 
+                console.error("Gagal mengambil data dari server:", error);
+                return;
+            }
             
-            const localReports = await localDb.getReports();
-            const localReportMap = new Map(localReports.map(r => [r.id, r]));
             for(const serverReport of serverReports) {
                 serverReport.status = 'synced';
-                localReportMap.set(serverReport.id, serverReport);
+                await localDb.saveReport(serverReport);
             }
-            await dbAction('reports', 'readwrite', (store, resolve) => {
-                const clearRequest = store.clear();
-                clearRequest.onsuccess = () => {
-                     const reportsToSave = Array.from(localReportMap.values());
-                     if(reportsToSave.length === 0) { resolve(); return; }
-                     let count = 0;
-                     reportsToSave.forEach(report => {
-                         const putRequest = store.put(report);
-                         putRequest.onsuccess = () => { if(++count === reportsToSave.length) resolve(); };
-                     });
-                };
-            });
         }
 
-        // --- AUTHENTICATION LOGIC ---
+        // --- LOGIKA AUTENTIKASI ---
         const handleAuthStateChange = async (event, session) => {
-            const user = session?.user;
-            if (user) {
-                currentUser = user;
+            currentUser = session?.user || null;
+            if (currentUser) {
                 authPage.classList.add('hidden');
                 appPage.classList.remove('hidden');
-                userNameEl.innerHTML = sanitizeHTML(user.user_metadata?.name || user.email);
-                userEmailEl.innerHTML = sanitizeHTML(user.email);
+                userNameEl.innerHTML = sanitizeHTML(currentUser.user_metadata?.name || currentUser.email);
+                userEmailEl.innerHTML = sanitizeHTML(currentUser.email);
                 
                 if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                     await syncToServer();
@@ -527,7 +551,6 @@
                 currentUser = null;
                 appPage.classList.add('hidden');
                 authPage.classList.remove('hidden');
-                await localDb.clear();
                 allReports = [];
                 updateMainView();
                 if(clockInterval) clearInterval(clockInterval);
@@ -535,7 +558,10 @@
             }
         };
 
-        if(_supabase) _supabase.auth.onAuthStateChange(handleAuthStateChange);
+        // PERBAIKAN: Menggunakan listener onAuthStateChange untuk menangani status login awal
+        if(_supabase) {
+            _supabase.auth.onAuthStateChange(handleAuthStateChange);
+        }
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -567,9 +593,14 @@
         showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); });
         showLoginLink.addEventListener('click', (e) => { e.preventDefault(); registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
         
-        // --- CORE APP LOGIC ---
+        // --- LOGIKA INTI APLIKASI ---
         async function updateMainView() {
-            allReports = await localDb.getReports() || [];
+            if (!currentUser) {
+                reportSection.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            };
+            allReports = await localDb.getReports(currentUser.id) || [];
             allReports = allReports.filter(r => r.status !== 'pending_deletion');
             allReports.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
             
@@ -594,7 +625,7 @@
             if (!metode) { showMessage('Data Tidak Lengkap', 'Metode Perhitungan Jam wajib dipilih.', true); return; }
             
             let newReport = {
-                id: Date.now().toString(),
+                id: crypto.randomUUID(),
                 user_id: currentUser.id,
                 nama_operator: userNameEl.textContent,
                 tanggal: tanggalInput.value, shift: shiftInput.value, jenis_muatan: jenisMuatanInput.value,
@@ -649,7 +680,7 @@
                 e.stopPropagation();
                 const reportId = deleteBtn.dataset.id;
                 showConfirm('Konfirmasi Hapus', 'Apakah Anda yakin ingin menghapus laporan ini?', async () => {
-                    const report = await dbAction('reports', 'readonly', (store, resolve) => store.get(reportId).onsuccess = e => resolve(e.target.result));
+                    const report = allReports.find(r => r.id === reportId);
                     if (report) {
                         if(report.status === 'pending_creation'){
                              await localDb.deleteReport(reportId);
@@ -708,7 +739,7 @@
                             </div>
                             <div>
                                 <p class="text-xs text-slate-500">Jam Efektif</p>
-                                <p class="font-black text-teal-500 text-2xl tracking-tighter">${report.jam_kerja.toFixed(2)}</p>
+                                <p class="font-black text-teal-500 text-2xl tracking-tighter">${(report.jam_kerja || 0).toFixed(2)}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-slate-500">Total Ritase</p>
@@ -722,7 +753,7 @@
                     reportListContainer.appendChild(card);
                 });
             }
-            const monthlyTotal = filteredReports.reduce((total, r) => total + r.jam_kerja, 0);
+            const monthlyTotal = filteredReports.reduce((total, r) => total + (r.jam_kerja || 0), 0);
             grandTotalJamEl.textContent = monthlyTotal.toFixed(2);
         }
 
@@ -735,9 +766,9 @@
             
             availableMonths.forEach(monthStr => {
                 const option = document.createElement('option');
-                const date = new Date(monthStr + '-02T00:00:00');
+                const date = new Date(monthStr + '-02T00:00:00Z'); // Gunakan Z untuk UTC
                 option.value = monthStr;
-                option.textContent = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                option.textContent = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
                 mainMonthFilter.appendChild(option);
             });
 
@@ -825,24 +856,30 @@
             }
             return initialData;
         }
-        function renderRitaseTable(container, ritaseData, shift) {
-            container.innerHTML = '';
-            const hourKeys = Object.keys(ritaseData).sort((a, b) => {
+
+        function sortRitaseHours(shift) {
+            return (a, b) => {
                 let hourA = parseInt(a.split(':')[0]);
                 let hourB = parseInt(b.split(':')[0]);
                 if (shift === 'Malam') {
-                    if (hourA >= 7 && hourA <= 18) hourA += 24;
-                    if (hourB >= 7 && hourB <= 18) hourB += 24;
+                    if (hourA < 7) hourA += 24;
+                    if (hourB < 7) hourB += 24;
                 }
                 return hourA - hourB;
-            });
+            };
+        }
+
+        function renderRitaseTable(container, ritaseData, shift) {
+            container.innerHTML = '';
+            const hourKeys = Object.keys(ritaseData).sort(sortRitaseHours(shift));
+
             hourKeys.forEach(hourKey => {
                 const row = document.createElement('tr');
                 row.className = 'border-b border-black/5 dark:border-white/5 last:border-b-0 hover:bg-black/5 dark:hover:bg-white/5';
                 const ritaseEntries = ritaseData[hourKey] || [];
                 row.innerHTML = `
                     <td class="p-3 font-medium">${hourKey}</td>
-                    <td class="p-3">${ritaseEntries.sort().join(', ') || '<span class="text-slate-500">-</span>'}</td>
+                    <td class="p-3">${ritaseEntries.sort((a, b) => a - b).join(', ') || '<span class="text-slate-500">-</span>'}</td>
                 `;
                 container.appendChild(row);
             });
@@ -955,7 +992,7 @@
                  infoBody.push(['Jam Selesai', report.jam_selesai || '-']);
                  infoBody.push(['Istirahat', `${report.jam_istirahat || 0} Jam`]);
              }
-             infoBody.push(['Total Jam Kerja', `${report.jam_kerja.toFixed(2)} Jam`]);
+             infoBody.push(['Total Jam Kerja', `${(report.jam_kerja || 0).toFixed(2)} Jam`]);
              infoBody.push(['Total Ritase', `${ritaseCount} Rit`]);
              
              doc.autoTable({ startY: 40, body: infoBody, theme: 'grid', styles: { fontSize: 10, cellPadding: 2 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50}, 1: {cellWidth: 'auto'} } });
@@ -965,11 +1002,8 @@
              doc.setFontSize(12);
              doc.text('Tabel Ritase', 14, lastY);
              const ritaseHead = [['Waktu', 'Ritase Tercatat (Menit)']];
-             const ritaseBody = Object.keys(report.ritase).sort((a,b) => {
-                let hourA = parseInt(a.split(':')[0]); let hourB = parseInt(b.split(':')[0]);
-                if (report.shift === 'Malam') { if (hourA >= 7 && hourA < 19) hourA += 24; if (hourB >= 7 && hourB < 19) hourB += 24; }
-                return hourA - hourB;
-             }).map(hour => [hour, (report.ritase[hour] || []).sort().join(', ')]);
+             const ritaseBody = Object.keys(report.ritase).sort(sortRitaseHours(report.shift))
+                .map(hour => [hour, (report.ritase[hour] || []).sort((a,b) => a - b).join(', ')]);
              
              doc.autoTable({ head: ritaseHead, body: ritaseBody, startY: lastY + 2, theme: 'striped', headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, styles: { cellPadding: 2, fontSize: 9, valign: 'top' }, columnStyles: { 0: { cellWidth: 40 } } });
              lastY = doc.lastAutoTable.finalY + 10;
@@ -981,8 +1015,9 @@
                  doc.setFont('helvetica', 'normal');
                  doc.text(doc.splitTextToSize(report.note, pageW - 28), 14, lastY + 5);
              }
-             doc.save(`Laporan_${report.tanggal}_${report.unit_id}.pdf`);
-             showMessage('Berhasil!', `Laporan PDF untuk tanggal ${formatDate(report.tanggal, true)} berhasil dibuat!`);
+             const safeFileName = `Laporan_${report.tanggal}_${report.unit_id.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+             doc.save(safeFileName);
+             showMessage('Berhasil!', `Laporan PDF berhasil dibuat!`);
         }
 
         function exportMonthlySummaryToPdf() {
@@ -1001,7 +1036,7 @@
             let totalRitaseCOAL = 0;
             
             filteredReports.forEach(report => {
-                totalJamKerja += report.jam_kerja;
+                totalJamKerja += (report.jam_kerja || 0);
                 const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
                 if (report.jenis_muatan === 'OB') {
                     totalRitaseOB += ritaseCount;
@@ -1025,8 +1060,8 @@
             const doc = new jsPDF();
             const pageW = doc.internal.pageSize.getWidth();
             const primaryColor = '#0d9488';
-            const periodDate = new Date(selectedMonth + '-02T00:00:00');
-            const periodText = periodDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            const periodDate = new Date(selectedMonth + '-02T00:00:00Z');
+            const periodText = periodDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'UTC' });
             
             // Header
             doc.setFillColor(primaryColor);
@@ -1103,11 +1138,13 @@
             const detailHead = [['Tanggal', 'Unit ID', 'Tipe', 'Jam Kerja', 'Jml Ritase']];
             const detailBody = filteredReports.map(report => {
                 const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
-                return [ formatDate(report.tanggal), sanitizeHTML(report.unit_id), sanitizeHTML(report.jenis_muatan), report.jam_kerja.toFixed(2), ritaseCount ];
+                return [ formatDate(report.tanggal), sanitizeHTML(report.unit_id), sanitizeHTML(report.jenis_muatan), (report.jam_kerja || 0).toFixed(2), ritaseCount ];
             });
             doc.autoTable({ head: detailHead, body: detailBody, startY: 25, theme: 'striped', headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, styles: { fontSize: 9 }, columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } } });
 
-            doc.save(`SlipGaji_${userNameEl.textContent.replace(/\s/g, '_')}_${selectedMonth}.pdf`);
+            const safeUserName = (userNameEl.textContent || 'operator').replace(/[^a-z0-9]/gi, '_');
+            const safeFileName = `SlipGaji_${safeUserName}_${selectedMonth}.pdf`;
+            doc.save(safeFileName);
             showMessage('Berhasil!', 'Slip Gaji PDF berhasil dibuat!');
         }
         
