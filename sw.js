@@ -16,7 +16,6 @@ const urlsToCache = [
   `${BASE_URL}/js/jspdf.umd.min.js`,
   `${BASE_URL}/js/jspdf.plugin.autotable.min.js`,
   // FILE BARU DITAMBAHKAN DI SINI
-  `${BASE_URL}/js/supabase.min.js`,
   // Pastikan path ke webfonts ini benar sesuai struktur folder Anda
   `${BASE_URL}/webfonts/fa-solid-900.woff2`,
   `${BASE_URL}/webfonts/fa-regular-400.woff2`,
