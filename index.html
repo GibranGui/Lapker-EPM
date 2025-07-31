@@ -49,7 +49,9 @@
         .section-title { font-size: 1.5rem; font-weight: 800; color: inherit; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
         .section-title i { color: var(--primary); }
         .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); }
+        .uppercase { text-transform: uppercase; } /* [NEW] Class untuk uppercase */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
         .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
         .background-shapes div { position: absolute; border-radius: 50%; background-image: linear-gradient(to bottom right, var(--primary), var(--secondary)); opacity: 0.1; z-index: -1; }
         #install-btn { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 100; width: auto; padding: 0.75rem 1.5rem; border-radius: 2rem; font-weight: 700; }
@@ -76,24 +78,24 @@
             <p class="text-center text-slate-500 mb-8">Silakan masuk atau daftar untuk melanjutkan</p>
             
             <div class="glass-card p-8">
-                <!-- Form Login -->
+                <!-- Form Login dengan NIK -->
                 <form id="login-form" class="">
                     <h2 class="text-2xl font-bold mb-6">Masuk</h2>
                     <div class="space-y-4">
-                        <div class="form-input-group"><i class="fas fa-envelope form-input-icon"></i><input type="email" id="login-email" class="form-input" placeholder="Email" required></div>
-                        <div class="form-input-group"><i class="fas fa-lock form-input-icon"></i><input type="password" id="login-password" class="form-input" placeholder="Password" required></div>
+                        <!-- [MODIFIED] Input NIK diubah ke type="text" dan class="uppercase" -->
+                        <div class="form-input-group"><i class="fas fa-id-card form-input-icon"></i><input type="text" id="login-nik" class="form-input uppercase" placeholder="Nomor Induk Karyawan (NIK)" required></div>
                         <button type="submit" class="btn btn-primary w-full !py-3">Masuk</button>
                     </div>
                     <p class="text-center text-sm mt-6">Belum punya akun? <a href="#" id="show-register-link" class="font-bold text-teal-500 hover:underline">Daftar di sini</a></p>
                 </form>
 
-                <!-- Form Register -->
+                <!-- Form Register dengan NIK dan Nama -->
                 <form id="register-form" class="hidden">
                     <h2 class="text-2xl font-bold mb-6">Daftar Akun Baru</h2>
                     <div class="space-y-4">
                         <div class="form-input-group"><i class="fas fa-user form-input-icon"></i><input type="text" id="register-name" class="form-input" placeholder="Nama Lengkap" required></div>
-                        <div class="form-input-group"><i class="fas fa-envelope form-input-icon"></i><input type="email" id="register-email" class="form-input" placeholder="Email" required></div>
-                        <div class="form-input-group"><i class="fas fa-lock form-input-icon"></i><input type="password" id="register-password" class="form-input" placeholder="Password" required></div>
+                        <!-- [MODIFIED] Input NIK diubah ke type="text" dan class="uppercase" -->
+                        <div class="form-input-group"><i class="fas fa-id-card form-input-icon"></i><input type="text" id="register-nik" class="form-input uppercase" placeholder="Nomor Induk Karyawan (NIK)" required></div>
                         <button type="submit" class="btn btn-secondary w-full !py-3">Daftar</button>
                     </div>
                     <p class="text-center text-sm mt-6">Sudah punya akun? <a href="#" id="show-login-link" class="font-bold text-teal-500 hover:underline">Masuk di sini</a></p>
@@ -111,7 +113,7 @@
             <div class="flex items-center gap-2 md:gap-4">
                 <div class="text-right hidden md:block">
                     <p id="user-name" class="font-bold"></p>
-                    <p id="user-email" class="text-xs text-slate-500"></p>
+                    <p id="user-nik" class="text-xs text-slate-500"></p>
                 </div>
                 <button id="logout-btn" class="glass-card !rounded-full h-12 w-12 flex items-center justify-center text-slate-500 hover:text-rose-500 transition-colors" aria-label="Keluar">
                     <i class="fas fa-sign-out-alt"></i>
@@ -123,80 +125,113 @@
             </div>
         </header>
 
-        <main class="space-y-8">
-            <!-- Bagian Form -->
-            <div class="glass-card p-6 md:p-8">
-                <form id="timesheet-form">
-                    <!-- Langkah 1: Info Awal -->
-                    <div id="step-1">
-                        <h2 class="section-title"><i class="fas fa-play-circle"></i>Mulai Sesi Kerja Baru</h2>
-                        <div class="space-y-5">
-                             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                 <div class="form-input-group"><i class="fas fa-calendar-alt form-input-icon"></i><input type="date" id="tanggal" class="form-input"></div>
-                                 <div class="form-input-group"><i class="fas fa-clock form-input-icon"></i><select id="shift" class="form-input"><option value="" disabled selected>Pilih Shift...</option><option value="Siang">Siang (07-19)</option><option value="Malam">Malam (19-07)</option></select></div>
-                                 <div class="form-input-group"><i class="fas fa-truck-loading form-input-icon"></i><select id="jenis-muatan" class="form-input"><option value="" disabled selected>Pilih Muatan...</option><option value="OB">OB</option><option value="COAL">COAL</option></select></div>
-                            </div>
-                            <button type="button" id="start-session-btn" class="btn btn-primary !py-4"><i class="fas fa-arrow-right mr-3"></i>Lanjutkan ke Pencatatan</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Langkah 2: Sesi Aktif -->
-                    <div id="step-2" class="hidden">
-                         <div class="bg-teal-500/10 p-4 rounded-xl mb-6 flex justify-between items-center border border-teal-500/20">
-                            <div>
-                                <h3 class="text-lg font-bold text-teal-600 flex items-center"><i class="fas fa-spinner fa-spin mr-3"></i>Sesi Aktif</h3>
-                                <div id="step-1-summary" class="text-sm text-teal-700 ml-8 mt-1 dark:text-teal-400"></div>
-                            </div>
-                            <button type="button" id="cancel-session-btn" class="text-sm font-semibold text-rose-500 hover:text-rose-700 transition">Batalkan</button>
-                        </div>
+        <main id="main-content" class="space-y-8">
+            <!-- Bagian Form (Awalnya tersembunyi) -->
+            <div id="form-container" class="hidden">
+                 <div class="glass-card p-6 md:p-8 relative">
+                    <form id="timesheet-form">
+                        <button type="button" id="back-to-dashboard-btn" class="absolute top-4 left-4 text-slate-400 hover:text-teal-500 transition-colors"><i class="fas fa-arrow-left mr-2"></i>Kembali</button>
                         
-                        <div id="ritase-recorder" class="glass-card !bg-transparent p-4 rounded-xl mb-6">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="font-bold">Tabel Ritase (<span id="current-time" class="text-teal-500"></span>)</h4>
-                                <div class="relative">
-                                    <button type="button" id="record-ritase-btn" class="btn btn-secondary w-auto px-5 py-2.5" title="Catat waktu ritase saat ini"><i class="fas fa-plus-circle mr-2"></i>Catat</button>
+                        <!-- Langkah 1: Info Awal -->
+                        <div id="step-1">
+                            <h2 class="section-title mt-8"><i class="fas fa-play-circle"></i>Mulai Sesi Kerja Baru</h2>
+                            <div class="space-y-5">
+                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                     <div class="form-input-group"><i class="fas fa-truck-pickup form-input-icon"></i><input type="text" id="unit-type-start" placeholder="Tipe Unit (Cth: DT)" class="form-input uppercase" required></div>
+                                     <div class="form-input-group"><i class="fas fa-hashtag form-input-icon"></i><input type="text" id="unit-id-start" placeholder="ID Unit (Cth: 80)" class="form-input uppercase" required></div>
+                                     <div class="form-input-group"><i class="fas fa-calendar-alt form-input-icon"></i><input type="date" id="tanggal" class="form-input"></div>
+                                     <div class="form-input-group"><i class="fas fa-clock form-input-icon"></i><select id="shift" class="form-input"><option value="" disabled selected>Pilih Shift...</option><option value="Siang">Siang (07-19)</option><option value="Malam">Malam (19-07)</option></select></div>
+                                     <div class="form-input-group"><i class="fas fa-truck-loading form-input-icon"></i><select id="jenis-muatan" class="form-input"><option value="" disabled selected>Pilih Muatan...</option><option value="OB">OB</option><option value="COAL">COAL</option></select></div>
+                                     <div class="form-input-group"><i class="fas fa-tachometer-alt form-input-icon"></i><input type="number" step="0.01" id="hm-awal-start" placeholder="HM Awal" class="form-input"></div>
+                                     <div class="form-input-group"><i class="fas fa-road form-input-icon"></i><input type="number" step="0.01" id="km-awal-start" placeholder="KM Awal" class="form-input"></div>
                                 </div>
-                            </div>
-                            <div class="overflow-x-auto bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-inner">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-black/5 dark:bg-white/5">
-                                        <tr>
-                                            <th class="p-3 font-semibold text-left">Waktu</th>
-                                            <th class="p-3 font-semibold text-left">Ritase Tercatat (Menit)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="ritase-table-body"></tbody>
-                                </table>
+                                <button type="button" id="start-session-btn" class="btn btn-primary !py-4"><i class="fas fa-arrow-right mr-3"></i>Mulai & Catat Ritase</button>
                             </div>
                         </div>
                         
-                        <div class="space-y-6 fade-in">
-                             <h2 class="section-title pt-6"><i class="fas fa-check-circle"></i>Selesaikan Laporan</h2>
-                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                 <div class="form-input-group"><i class="fas fa-truck-pickup form-input-icon"></i><input type="text" id="unit-type" placeholder="Tipe Unit (Cth: Dump Truck)" class="form-input uppercase" required></div>
-                                 <div class="form-input-group"><i class="fas fa-hashtag form-input-icon"></i><input type="text" id="unit-id" placeholder="ID Unit (Cth: DT 80)" class="form-input uppercase" required></div>
-                            </div>
-                             <div class="form-input-group"><i class="fas fa-calculator form-input-icon"></i><select id="metode" class="form-input"><option value="" disabled selected>Pilih Metode Perhitungan...</option><option value="hm">Hours Meter (HM)</option><option value="jam_dunia">Jam Dunia</option></select></div>
-                            <div id="hm-inputs" class="hidden grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div class="form-input-group"><i class="fas fa-hourglass-start form-input-icon"></i><input type="number" step="0.01" min="0" id="hm-awal" placeholder="HM Awal" class="form-input"></div>
-                                <div class="form-input-group"><i class="fas fa-hourglass-end form-input-icon"></i><input type="number" step="0.01" min="0" id="hm-akhir" placeholder="HM Akhir" class="form-input"></div>
-                            </div>
-                            <div id="jam-dunia-inputs" class="hidden space-y-5">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div class="form-input-group"><i class="fas fa-play form-input-icon"></i><input type="time" id="jam-mulai" class="form-input"></div>
-                                    <div class="form-input-group"><i class="fas fa-stop form-input-icon"></i><input type="time" id="jam-selesai" class="form-input"></div>
+                        <!-- Langkah 2: Sesi Aktif -->
+                        <div id="step-2" class="hidden">
+                             <div class="bg-teal-500/10 p-4 rounded-xl mb-6 flex flex-col md:flex-row justify-between items-start md:items-center border border-teal-500/20">
+                                <div class="flex items-center gap-4">
+                                    <i class="fas fa-spinner fa-spin text-2xl text-teal-500"></i>
+                                    <div>
+                                        <h3 class="text-lg font-bold text-teal-600">Sesi Aktif</h3>
+                                        <div id="step-1-summary" class="text-xs md:text-sm text-teal-700 dark:text-teal-400"></div>
+                                    </div>
                                 </div>
-                                <div class="form-input-group"><i class="fas fa-mug-hot form-input-icon"></i><input type="number" step="0.1" min="0" id="jam-istirahat" placeholder="Lama Istirahat (Jam)" class="form-input" value="0"></div>
+                                <button type="button" id="cancel-session-btn" class="btn btn-danger !w-auto !py-2 px-4 mt-4 md:mt-0"><i class="fas fa-times-circle mr-2"></i>Batalkan Sesi</button>
                             </div>
-                             <div class="form-input-group"><i class="fas fa-pencil-alt form-input-icon"></i><textarea id="note" rows="3" class="form-input" placeholder="Catatan Aktivitas..."></textarea></div>
-                            <button type="submit" class="btn btn-primary !py-4"><i class="fas fa-save mr-3"></i>Simpan & Selesaikan</button>
+                            
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Kolom Pencatatan Ritase -->
+                                <div class="glass-card p-6 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="section-title !text-xl !mb-0"><i class="fas fa-stopwatch"></i>Pencatatan Ritase</h3>
+                                        <span id="current-time" class="text-sm font-semibold text-slate-500"></span>
+                                    </div>
+                                    <div class="overflow-x-auto bg-white/50 dark:bg-slate-800/50 rounded-lg shadow-inner max-h-60">
+                                        <table class="w-full text-sm">
+                                            <thead class="bg-black/5 dark:bg-white/5">
+                                                <tr>
+                                                    <th class="p-3 font-semibold text-left">Waktu</th>
+                                                    <th class="p-3 font-semibold text-left">Ritase Tercatat (Menit)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="ritase-table-body"></tbody>
+                                        </table>
+                                    </div>
+                                    <div id="ritase-summary-cards" class="grid grid-cols-2 gap-4">
+                                        <div class="glass-card p-4 text-center">
+                                            <p class="text-sm text-slate-500">Total Ritase</p>
+                                            <p id="total-ritase-summary" class="font-black text-indigo-500 text-3xl">0</p>
+                                        </div>
+                                        <div class="glass-card p-4 text-center">
+                                            <p class="text-sm text-slate-500">Avg. Cycle Time</p>
+                                            <p id="cycle-time-summary" class="font-black text-teal-500 text-3xl">0m 0s</p>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="record-ritase-btn" class="btn btn-secondary w-full" title="Catat waktu ritase saat ini"><i class="fas fa-plus-circle mr-2"></i>Catat Ritase Sekarang</button>
+                                </div>
+
+                                <!-- Kolom Pencatatan Fuel & Penyelesaian -->
+                                <div class="space-y-6">
+                                    <div class="glass-card p-6">
+                                        <h3 class="section-title !text-xl !mb-4"><i class="fas fa-gas-pump"></i>Pencatatan Fuel</h3>
+                                        <div class="space-y-4">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="form-input-group"><i class="fas fa-tachometer-alt form-input-icon"></i><input type="number" step="0.01" id="hm-fuel" placeholder="HM saat isi Fuel" class="form-input"></div>
+                                                <div class="form-input-group"><i class="fas fa-tint form-input-icon"></i><input type="number" step="0.01" id="fuel-liter" placeholder="Jumlah Liter" class="form-input"></div>
+                                            </div>
+                                            <button type="button" id="save-fuel-btn" class="btn btn-secondary !py-3"><i class="fas fa-save mr-2"></i>Simpan Catatan Fuel</button>
+                                        </div>
+                                        <div id="fuel-log-history" class="mt-4"></div>
+                                    </div>
+
+                                    <div class="glass-card p-6">
+                                        <h3 class="section-title !text-xl !mb-4"><i class="fas fa-check-circle"></i>Selesaikan Laporan</h3>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div class="form-input-group"><i class="fas fa-hourglass-end form-input-icon"></i><input type="number" step="0.01" min="0" id="hm-akhir" placeholder="HM Akhir" class="form-input" required></div>
+                                            <div class="form-input-group"><i class="fas fa-road form-input-icon"></i><input type="number" step="0.01" min="0" id="km-akhir" placeholder="KM Akhir" class="form-input" required></div>
+                                        </div>
+                                        <div class="form-input-group mt-4"><i class="fas fa-pencil-alt form-input-icon"></i><textarea id="note" rows="3" class="form-input" placeholder="Catatan Aktivitas..."></textarea></div>
+                                        <button type="submit" class="btn btn-primary !py-4 mt-4"><i class="fas fa-save mr-3"></i>Simpan & Selesaikan Sesi</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
             
             <!-- Bagian Dashboard Laporan -->
-            <div id="report-section" class="space-y-6 hidden">
+            <div id="dashboard-container">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="section-title !mb-0"><i class="fas fa-clipboard-list"></i>Laporan Kerja</h2>
+                    <button id="new-session-btn" class="btn btn-primary !w-auto !py-2.5 px-4"><i class="fas fa-plus mr-2"></i>Sesi Baru</button>
+                </div>
+
+                <div id="active-session-container" class="mb-6"></div>
+
                 <div class="glass-card p-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div class="w-full md:w-auto flex-grow">
@@ -209,9 +244,9 @@
                        </div>
                     </div>
                 </div>
-                <div id="report-list-container" class="space-y-4"></div>
+                <div id="report-list-container" class="space-y-4 mt-6"></div>
                 
-                <div id="export-section" class="hidden pt-4 glass-card p-6">
+                <div id="export-section" class="hidden pt-4 glass-card p-6 mt-6">
                     <h3 class="section-title !text-xl !mb-4"><i class="fas fa-file-invoice-dollar"></i>Buat Laporan Gaji Bulanan</h3>
                     <div class="text-sm text-slate-500 dark:text-slate-400 mb-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
                         <p class="font-semibold text-base">Komponen Gaji & Potongan (Otomatis):</p>
@@ -227,9 +262,9 @@
                     <button id="export-pdf-btn" class="btn btn-danger mt-5"><i class="fas fa-file-pdf mr-3"></i>Buat Slip Gaji PDF</button>
                 </div>
                 
-                <div id="no-data-for-month" class="text-center py-16 hidden glass-card"><i class="fas fa-calendar-times text-5xl text-slate-400 mb-4"></i><p class="font-semibold text-lg">Tidak ada laporan untuk periode ini.</p></div>
+                <div id="no-data-for-month" class="text-center py-16 hidden glass-card mt-6"><i class="fas fa-calendar-times text-5xl text-slate-400 mb-4"></i><p class="font-semibold text-lg">Tidak ada laporan untuk periode ini.</p></div>
+                <div id="empty-state" class="text-center py-16 glass-card mt-6"><i class="fas fa-folder-open text-6xl text-slate-400 mb-5"></i><p class="font-semibold text-xl">Dashboard Kosong</p><p class="text-sm text-slate-500 mt-2">Buat sesi kerja baru untuk melihat laporan Anda di sini.</p></div>
             </div>
-            <div id="empty-state" class="text-center py-16 glass-card"><i class="fas fa-folder-open text-6xl text-slate-400 mb-5"></i><p class="font-semibold text-xl">Dashboard Kosong</p><p class="text-sm text-slate-500 mt-2">Mulai sesi kerja baru untuk melihat laporan Anda di sini.</p></div>
         </main>
     </div>
     
@@ -251,7 +286,7 @@
                 </div>
                 <button id="close-detail-modal-btn" class="text-slate-400 hover:text-white h-8 w-8 text-2xl">&times;</button>
             </div>
-            <div id="detail-modal-ritase-table" class="overflow-x-auto bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-white/10 shadow-inner"></div>
+            <div id="detail-modal-content" class="space-y-4"></div>
             <div class="mt-6 flex gap-4">
                 <button id="close-detail-modal-btn-2" class="btn btn-gray w-1/3">Tutup</button>
                 <button id="export-single-pdf-btn" class="btn btn-danger w-2/3"><i class="fas fa-file-pdf mr-2"></i>Export PDF</button>
@@ -290,7 +325,7 @@
     }
 
     // --- Logika Database IndexedDB ---
-    const DB_NAME = 'LaporanKerjaDB_v7_Offline'; // Versi baru untuk upgrade
+    const DB_NAME = 'LaporanKerjaDB_v10_Offline';
     const DB_VERSION = 1;
     let db;
 
@@ -302,7 +337,7 @@
                 if (!db.objectStoreNames.contains('reports')) {
                     const store = db.createObjectStore('reports', { keyPath: 'id' });
                     store.createIndex('status', 'status', { unique: false });
-                    store.createIndex('user_id', 'user_id', { unique: false });
+                    store.createIndex('user_nik', 'user_nik', { unique: false });
                 }
             };
             request.onsuccess = (event) => {
@@ -330,26 +365,26 @@
     }
 
     const localDb = {
-        getReports: (userId) => dbAction('reports', 'readonly', (store, resolve) => {
-            const index = store.index('user_id');
-            index.getAll(userId).onsuccess = (e) => resolve(e.target.result);
+        getReports: (userNik) => dbAction('reports', 'readonly', (store, resolve) => {
+            const index = store.index('user_nik');
+            index.getAll(userNik).onsuccess = (e) => resolve(e.target.result);
         }),
         saveReport: (report) => dbAction('reports', 'readwrite', (store, resolve) => store.put(report).onsuccess = resolve),
         deleteReport: (id) => dbAction('reports', 'readwrite', (store, resolve) => store.delete(id).onsuccess = resolve),
-        getPending: (userId) => dbAction('reports', 'readonly', (store, resolve, reject) => { 
+        getPending: (userNik) => dbAction('reports', 'readonly', (store, resolve, reject) => { 
             const index = store.index('status');
             const creationsRequest = index.getAll('pending_creation');
             const deletionsRequest = index.getAll('pending_deletion');
             
             Promise.all([
-                new Promise((res, rej) => { creationsRequest.onsuccess = e => res(e.target.result.filter(r => r.user_id === userId)); creationsRequest.onerror = e => rej(e.target.error); }),
-                new Promise((res, rej) => { deletionsRequest.onsuccess = e => res(e.target.result.filter(r => r.user_id === userId)); deletionsRequest.onerror = e => rej(e.target.error); })
+                new Promise((res, rej) => { creationsRequest.onsuccess = e => res(e.target.result.filter(r => r.user_nik === userNik)); creationsRequest.onerror = e => rej(e.target.error); }),
+                new Promise((res, rej) => { deletionsRequest.onsuccess = e => res(e.target.result.filter(r => r.user_nik === userNik)); deletionsRequest.onerror = e => rej(e.target.error); })
             ]).then(([creations, deletions]) => resolve({ creations, deletions }))
               .catch(reject);
         }),
-        clearUserReports: (userId) => dbAction('reports', 'readwrite', (store, resolve) => {
-            const index = store.index('user_id');
-            const request = index.openCursor(IDBKeyRange.only(userId));
+        clearUserReports: (userNik) => dbAction('reports', 'readwrite', (store, resolve) => {
+            const index = store.index('user_nik');
+            const request = index.openCursor(IDBKeyRange.only(userNik));
             request.onsuccess = (event) => {
                 const cursor = event.target.result;
                 if (cursor) {
@@ -377,7 +412,6 @@
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log(`Hasil pilihan pengguna: ${outcome}`);
                 deferredPrompt = null;
                 installBtn.classList.add('hidden');
             }
@@ -405,21 +439,33 @@
         const loginForm = el('#login-form'), registerForm = el('#register-form');
         const showRegisterLink = el('#show-register-link'), showLoginLink = el('#show-login-link');
         const logoutBtn = el('#logout-btn');
-        const userNameEl = el('#user-name'), userEmailEl = el('#user-email');
+        const userNameEl = el('#user-name'), userNikEl = el('#user-nik');
+        
+        const mainContent = el('#main-content');
+        const formContainer = el('#form-container');
+        const dashboardContainer = el('#dashboard-container');
+        const newSessionBtn = el('#new-session-btn');
+        const backToDashboardBtn = el('#back-to-dashboard-btn');
         
         const timesheetForm = el('#timesheet-form');
         const step1Div = el('#step-1'), step2Div = el('#step-2');
         const startSessionBtn = el('#start-session-btn'), cancelSessionBtn = el('#cancel-session-btn');
         const step1Summary = el('#step-1-summary');
         const tanggalInput = el('#tanggal'), shiftInput = el('#shift'), jenisMuatanInput = el('#jenis-muatan');
-        const metodeInput = el('#metode'), hmAwalInput = el('#hm-awal'), hmAkhirInput = el('#hm-akhir');
-        const jamMulaiInput = el('#jam-mulai'), jamSelesaiInput = el('#jam-selesai'), jamIstirahatInput = el('#jam-istirahat');
-        const hmInputs = el('#hm-inputs'), jamDuniaInputs = el('#jam-dunia-inputs');
+        const unitTypeStartInput = el('#unit-type-start'), unitIdStartInput = el('#unit-id-start');
+        const hmAwalStartInput = el('#hm-awal-start'), kmAwalStartInput = el('#km-awal-start');
+        
+        const hmAkhirInput = el('#hm-akhir'), kmAkhirInput = el('#km-akhir');
         
         const recordRitaseBtn = el('#record-ritase-btn'), ritaseTableBody = el('#ritase-table-body');
         const currentTimeEl = el('#current-time');
+        const totalRitaseSummary = el('#total-ritase-summary'), cycleTimeSummary = el('#cycle-time-summary');
+
+        const hmFuelInput = el('#hm-fuel'), fuelLiterInput = el('#fuel-liter'), saveFuelBtn = el('#save-fuel-btn');
+        const fuelLogHistoryContainer = el('#fuel-log-history');
         
-        const reportSection = el('#report-section'), reportListContainer = el('#report-list-container');
+        const activeSessionContainer = el('#active-session-container');
+        const reportListContainer = el('#report-list-container');
         const emptyState = el('#empty-state'), noDataForMonth = el('#no-data-for-month');
         const totalCard = el('#total-card'), grandTotalJamEl = el('#grand-total-jam');
         const mainMonthFilter = el('#main-month-filter');
@@ -430,7 +476,7 @@
         const messageModalTitle = el('#message-modal-title'), messageModalText = el('#message-modal-text');
         
         const detailModal = el('#detail-modal'), closeDetailModalBtn = el('#close-detail-modal-btn'), closeDetailModalBtn2 = el('#close-detail-modal-btn-2');
-        const detailModalTitle = el('#detail-modal-title'), detailModalInfo = el('#detail-modal-info'), detailModalRitaseTable = el('#detail-modal-ritase-table');
+        const detailModalTitle = el('#detail-modal-title'), detailModalInfo = el('#detail-modal-info'), detailModalContent = el('#detail-modal-content');
         const exportSinglePdfBtn = el('#export-single-pdf-btn');
         
         const confirmModal = el('#confirm-modal'), confirmModalCancelBtn = el('#confirm-modal-cancel-btn'), confirmModalConfirmBtn = el('#confirm-modal-confirm-btn');
@@ -440,11 +486,11 @@
 
         // --- STATE APLIKASI ---
         let allReports = [];
-        let currentSessionRitase = {};
         let clockInterval;
         let confirmCallback = null;
-        let currentUser = null;
+        let currentUser = null; // Akan berisi {nik, full_name}
         const SESSION_KEY = 'activeWorkSession';
+        const USER_KEY = 'currentUserProfile';
 
         // --- LOGIKA TEMA ---
         const applyTheme = (theme) => {
@@ -467,6 +513,7 @@
         };
 
         const sanitizeHTML = (str) => {
+            if (!str) return '';
             const temp = document.createElement('div');
             temp.textContent = str;
             return temp.innerHTML;
@@ -483,45 +530,63 @@
         const formatCurrency = (number) => {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
         };
+
+        // --- MANAJEMEN TAMPILAN ---
+        function showView(view) {
+            formContainer.classList.add('hidden');
+            dashboardContainer.classList.add('hidden');
+            if (view === 'form') {
+                formContainer.classList.remove('hidden');
+            } else {
+                dashboardContainer.classList.remove('hidden');
+            }
+        }
         
         // --- LOGIKA SINKRONISASI & DATA ---
         async function syncToServer() {
             if (!navigator.onLine || !_supabase || !currentUser) { return; }
             console.log("Memulai sinkronisasi...");
-            const { creations, deletions } = await localDb.getPending(currentUser.id);
+            const { creations, deletions } = await localDb.getPending(currentUser.nik);
             
             if (deletions.length > 0) {
                 const { error } = await _supabase.from('reports').delete().in('id', deletions.map(r => r.id));
                 if (!error) {
                     for (const report of deletions) await localDb.deleteReport(report.id);
-                    console.log(`${deletions.length} laporan berhasil dihapus dari server.`);
                 } else {
                     console.error("Gagal menghapus laporan di server:", error);
                 }
             }
             
             if (creations.length > 0) {
-                const reportsToCreate = creations.map(r => { const { status, ...d } = r; return d; });
+                const reportsToCreate = creations.map(r => { 
+                    const { status, ...d } = r; 
+                    if (d.fuel_logs && typeof d.fuel_logs !== 'string') {
+                        d.fuel_logs = JSON.stringify(d.fuel_logs);
+                    }
+                    if (d.ritase && typeof d.ritase !== 'string') {
+                        d.ritase = JSON.stringify(d.ritase);
+                    }
+                    return d; 
+                });
                 const { error } = await _supabase.from('reports').upsert(reportsToCreate, { onConflict: 'id' });
                 if (!error) {
                     for (const report of creations) {
                         report.status = 'synced';
                         await localDb.saveReport(report);
                     }
-                    console.log(`${creations.length} laporan berhasil dibuat/diperbarui di server.`);
                 } else {
                      console.error("Gagal membuat/memperbarui laporan di server:", error);
                 }
             }
             
             await fetchFromServer();
-            await updateMainView();
+            await updateDashboardView();
             console.log("Sinkronisasi selesai.");
         }
 
         async function fetchFromServer() {
             if (!navigator.onLine || !_supabase || !currentUser) { return; }
-            const { data: serverReports, error } = await _supabase.from('reports').select('*').eq('user_id', currentUser.id);
+            const { data: serverReports, error } = await _supabase.from('reports').select('*').eq('user_nik', currentUser.nik);
             if (error) { 
                 console.error("Gagal mengambil data dari server:", error);
                 return;
@@ -529,84 +594,126 @@
             
             for(const serverReport of serverReports) {
                 serverReport.status = 'synced';
+                if (serverReport.ritase && typeof serverReport.ritase === 'string') {
+                    try { serverReport.ritase = JSON.parse(serverReport.ritase); } catch(e) { serverReport.ritase = {}; }
+                }
+                 if (serverReport.fuel_logs && typeof serverReport.fuel_logs === 'string') {
+                    try { serverReport.fuel_logs = JSON.parse(serverReport.fuel_logs); } catch(e) { serverReport.fuel_logs = []; }
+                }
                 await localDb.saveReport(serverReport);
             }
         }
 
-        // --- LOGIKA AUTENTIKASI ---
-        const handleAuthStateChange = async (event, session) => {
-            currentUser = session?.user || null;
-            if (currentUser) {
-                authPage.classList.add('hidden');
-                appPage.classList.remove('hidden');
-                userNameEl.innerHTML = sanitizeHTML(currentUser.user_metadata?.name || currentUser.email);
-                userEmailEl.innerHTML = sanitizeHTML(currentUser.email);
-                
-                if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                    await syncToServer();
-                    await updateMainView();
-                    restoreActiveSession();
-                }
+        // --- LOGIKA AUTENTIKASI DENGAN NIK ---
+        
+        function checkLoginState() {
+            const userJSON = localStorage.getItem(USER_KEY);
+            if (userJSON) {
+                currentUser = JSON.parse(userJSON);
+                initializeAppUI();
             } else {
-                currentUser = null;
-                appPage.classList.add('hidden');
                 authPage.classList.remove('hidden');
-                allReports = [];
-                updateMainView();
-                if(clockInterval) clearInterval(clockInterval);
-                localStorage.removeItem(SESSION_KEY);
+                appPage.classList.add('hidden');
             }
-        };
+        }
 
-        // PERBAIKAN: Menggunakan listener onAuthStateChange untuk menangani status login awal
-        if(_supabase) {
-            _supabase.auth.onAuthStateChange(handleAuthStateChange);
+        async function initializeAppUI() {
+            authPage.classList.add('hidden');
+            appPage.classList.remove('hidden');
+            userNameEl.innerHTML = sanitizeHTML(currentUser.full_name);
+            userNikEl.innerHTML = `NIK: ${sanitizeHTML(currentUser.nik)}`;
+            
+            await syncToServer();
+            showView('dashboard');
+            await updateDashboardView();
         }
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = el('#login-email').value;
-            const password = el('#login-password').value;
-            const { error } = await _supabase.auth.signInWithPassword({ email, password });
-            if (error) showMessage('Login Gagal', error.message, true);
+            // [MODIFIED] Ambil nilai NIK dan ubah ke uppercase
+            const nik = el('#login-nik').value.toUpperCase();
+            if (!nik) {
+                showMessage('Login Gagal', 'NIK tidak boleh kosong.', true);
+                return;
+            }
+
+            const { data, error } = await _supabase
+                .from('profiles')
+                .select('nik, full_name')
+                .eq('nik', nik)
+                .single();
+
+            if (error || !data) {
+                showMessage('Login Gagal', 'NIK tidak ditemukan atau tidak terdaftar.', true);
+            } else {
+                currentUser = data;
+                localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+                initializeAppUI();
+            }
         });
 
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = el('#register-name').value;
-            const email = el('#register-email').value;
-            const password = el('#register-password').value;
-            const { error } = await _supabase.auth.signUp({ 
-                email, 
-                password,
-                options: { data: { name: sanitizeHTML(name) } }
-            });
-            if (error) showMessage('Pendaftaran Gagal', error.message, true);
-            else {
-                showMessage('Pendaftaran Berhasil', 'Silakan cek email Anda untuk verifikasi dan kemudian login.');
+            const fullName = el('#register-name').value;
+            // [MODIFIED] Ambil nilai NIK dan ubah ke uppercase
+            const nik = el('#register-nik').value.toUpperCase();
+
+            if (!fullName || !nik) {
+                showMessage('Pendaftaran Gagal', 'Nama dan NIK tidak boleh kosong.', true);
+                return;
+            }
+
+            const { data: existingUser, error: checkError } = await _supabase
+                .from('profiles')
+                .select('nik')
+                .eq('nik', nik)
+                .single();
+
+            if (existingUser) {
+                showMessage('Pendaftaran Gagal', 'NIK ini sudah terdaftar. Silakan masuk.', true);
+                return;
+            }
+
+            const { error } = await _supabase.from('profiles').insert([
+                { nik: nik, full_name: fullName }
+            ]);
+            
+            if (error) {
+                showMessage('Pendaftaran Gagal', `Terjadi kesalahan: ${error.message}`, true);
+            } else {
+                showMessage('Pendaftaran Berhasil', 'Akun Anda telah berhasil dibuat. Silakan masuk menggunakan NIK Anda.');
                 registerForm.reset();
                 showLoginLink.click();
             }
         });
 
-        logoutBtn.addEventListener('click', async () => await _supabase.auth.signOut());
+        logoutBtn.addEventListener('click', () => {
+            currentUser = null;
+            localStorage.removeItem(USER_KEY);
+            localStorage.removeItem(SESSION_KEY);
+            window.location.reload();
+        });
+
         showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); });
         showLoginLink.addEventListener('click', (e) => { e.preventDefault(); registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
         
         // --- LOGIKA INTI APLIKASI ---
-        async function updateMainView() {
+        
+        async function updateDashboardView() {
             if (!currentUser) {
-                reportSection.classList.add('hidden');
+                dashboardContainer.classList.add('hidden');
                 emptyState.classList.remove('hidden');
                 return;
             };
-            allReports = await localDb.getReports(currentUser.id) || [];
+
+            renderActiveSessionCard();
+
+            allReports = await localDb.getReports(currentUser.nik) || [];
             allReports = allReports.filter(r => r.status !== 'pending_deletion');
             allReports.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
             
             const hasAnyReport = allReports.length > 0;
-            reportSection.classList.toggle('hidden', !hasAnyReport);
-            emptyState.classList.toggle('hidden', hasAnyReport);
+            emptyState.classList.toggle('hidden', hasAnyReport || getActiveSession());
 
             if (hasAnyReport) {
                 populateMainMonthFilter();
@@ -618,57 +725,107 @@
                 renderFilteredReports([]);
             }
         }
+        
+        function renderActiveSessionCard() {
+            activeSessionContainer.innerHTML = '';
+            const session = getActiveSession();
+            if (session) {
+                const ritaseCount = Object.values(session.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
+                const cardHTML = `
+                <div class="glass-card p-5 cursor-pointer bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-lg border-purple-400" data-action="resume-session">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold flex items-center gap-3">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Sesi Aktif
+                        </h3>
+                        <span class="font-bold text-sm bg-white/20 px-3 py-1 rounded-full">LANJUTKAN</span>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-white/20 text-sm grid grid-cols-2 gap-x-4 gap-y-2">
+                        <div><strong>Unit:</strong> ${sanitizeHTML(session.unitType)} ${sanitizeHTML(session.unitId)}</div>
+                        <div><strong>Shift:</strong> ${sanitizeHTML(session.shift)}</div>
+                        <div><strong>Muatan:</strong> ${sanitizeHTML(session.jenisMuatan)}</div>
+                        <div><strong>Ritase Dicatat:</strong> ${ritaseCount}</div>
+                    </div>
+                </div>
+                `;
+                activeSessionContainer.innerHTML = cardHTML;
+            }
+        }
+
+        activeSessionContainer.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="resume-session"]')) {
+                const session = getActiveSession();
+                if (session) {
+                    resumeSession(session);
+                }
+            }
+        });
+
+        function resumeSession(session) {
+            showView('form');
+            step1Div.classList.add('hidden');
+            step2Div.classList.remove('hidden');
+            
+            step1Summary.innerHTML = `
+                Unit ${sanitizeHTML(session.unitType)} ${sanitizeHTML(session.unitId)} (${formatDate(session.tanggal, true)}) <br> 
+                <span class="font-semibold">HM Awal:</span> ${sanitizeHTML(session.hmAwal)} | <span class="font-semibold">KM Awal:</span> ${sanitizeHTML(session.kmAwal)}
+            `;
+            
+            renderRitaseTable(ritaseTableBody, session.ritase, session.shift);
+            updateRitaseSummary(session.ritase, session.tanggal, session.shift);
+            renderFuelLogHistory(session.fuel_logs || []);
+
+            updateClock();
+            if (clockInterval) clearInterval(clockInterval);
+            clockInterval = setInterval(updateClock, 1000);
+
+            hmAkhirInput.min = parseFloat(session.hmAwal) + 0.01;
+            kmAkhirInput.min = parseFloat(session.kmAwal) + 0.01;
+        }
 
         timesheetForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const metode = metodeInput.value;
-            if (!metode) { showMessage('Data Tidak Lengkap', 'Metode Perhitungan Jam wajib dipilih.', true); return; }
+            const session = getActiveSession();
+            if (!session) {
+                showMessage('Sesi Tidak Ditemukan', 'Tidak ada sesi aktif untuk diselesaikan.', true);
+                return;
+            }
+
+            const hmAkhir = parseFloat(hmAkhirInput.value);
+            const kmAkhir = parseFloat(kmAkhirInput.value);
+            const hmAwal = parseFloat(session.hmAwal);
+
+            if (isNaN(hmAkhir) || isNaN(kmAkhir) || hmAkhir <= hmAwal) { 
+                showMessage('Data Tidak Valid', 'HM Akhir dan KM Akhir harus angka valid. HM Akhir harus lebih besar dari HM Awal.', true); return; 
+            }
             
             let newReport = {
                 id: crypto.randomUUID(),
-                user_id: currentUser.id,
-                nama_operator: userNameEl.textContent,
-                tanggal: tanggalInput.value, shift: shiftInput.value, jenis_muatan: jenisMuatanInput.value,
-                unit_type: sanitizeHTML(el('#unit-type').value.toUpperCase()),
-                unit_id: sanitizeHTML(el('#unit-id').value.toUpperCase()),
+                user_nik: currentUser.nik,
+                nama_operator: currentUser.full_name,
+                tanggal: session.tanggal, 
+                shift: session.shift, 
+                jenis_muatan: session.jenisMuatan,
+                unit_type: session.unitType,
+                unit_id: session.unitId,
+                hm_awal_start: session.hmAwal,
+                km_awal_start: session.kmAwal,
                 note: sanitizeHTML(el('#note').value),
-                metode: metode,
-                ritase: { ...currentSessionRitase },
-                status: 'pending_creation'
+                ritase: session.ritase,
+                fuel_logs: session.fuel_logs || [],
+                status: 'pending_creation',
+                hm_akhir: hmAkhir,
+                km_akhir: kmAkhir,
+                jam_kerja: hmAkhir - hmAwal
             };
-
-            if (metode === 'hm') {
-                const hmAwal = parseFloat(hmAwalInput.value);
-                const hmAkhir = parseFloat(hmAkhirInput.value);
-                if (isNaN(hmAwal) || isNaN(hmAkhir) || hmAwal < 0 || hmAkhir < 0 || hmAkhir <= hmAwal) { 
-                    showMessage('Data Tidak Valid', 'HM Awal dan Akhir harus angka valid dan HM Akhir > HM Awal.', true); return; 
-                }
-                newReport.jam_kerja = hmAkhir - hmAwal;
-                newReport.hm_awal = hmAwal;
-                newReport.hm_akhir = hmAkhir;
-            } else {
-                const jamMulai = jamMulaiInput.value, jamSelesai = jamSelesaiInput.value;
-                const jamIstirahat = parseFloat(jamIstirahatInput.value);
-                if (isNaN(jamIstirahat) || jamIstirahat < 0 || !jamMulai || !jamSelesai) { 
-                    showMessage('Data Tidak Lengkap', 'Jam Mulai, Selesai, dan Istirahat harus valid.', true); return; 
-                }
-                
-                const t1 = new Date(`${tanggalInput.value}T${jamMulai}`);
-                let t2 = new Date(`${tanggalInput.value}T${jamSelesai}`);
-                if (t2 < t1) { t2.setDate(t2.getDate() + 1); }
-
-                const jamKerja = ((t2 - t1) / (1000 * 60 * 60)) - jamIstirahat;
-                if (jamKerja < 0) { showMessage('Data Tidak Valid', 'Total jam kerja tidak boleh negatif.', true); return; }
-                newReport.jam_kerja = jamKerja;
-                newReport.jam_mulai = jamMulai;
-                newReport.jam_selesai = jamSelesai;
-                newReport.jam_istirahat = jamIstirahat;
-            }
             
             await localDb.saveReport(newReport);
-            await updateMainView(); 
+            localStorage.removeItem(SESSION_KEY);
+            
+            await updateDashboardView(); 
             resetForm();
-            showMessage('Sukses', 'Laporan kerja berhasil disimpan secara lokal.');
+            showView('dashboard');
+            showMessage('Sukses', 'Laporan kerja berhasil disimpan.');
             await syncToServer();
         });
 
@@ -688,7 +845,7 @@
                             report.status = 'pending_deletion';
                             await localDb.saveReport(report);
                         }
-                        await updateMainView();
+                        await updateDashboardView();
                         showMessage('Laporan Dihapus', 'Laporan telah ditandai untuk dihapus.');
                         await syncToServer();
                     }
@@ -724,7 +881,7 @@
                         ${syncStatusIcon}
                         <div class="flex justify-between items-start">
                             <div>
-                                <p class="font-bold text-lg">${sanitizeHTML(report.nama_operator)}</p>
+                                <p class="font-bold text-lg">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p>
                                 <p class="text-sm text-slate-500 dark:text-slate-400">${formatDate(report.tanggal, true)}</p>
                             </div>
                             <div class="text-right flex-shrink-0 ml-4">
@@ -732,18 +889,22 @@
                                 <p class="text-xs text-slate-400 mt-1">${sanitizeHTML(report.shift)}</p>
                             </div>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-black/5 dark:border-white/5 grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <p class="text-xs text-slate-500">Unit</p>
-                                <p class="font-bold">${sanitizeHTML(report.unit_id)}</p>
-                            </div>
+                        <div class="mt-4 pt-4 border-t border-black/5 dark:border-white/5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                             <div>
                                 <p class="text-xs text-slate-500">Jam Efektif</p>
-                                <p class="font-black text-teal-500 text-2xl tracking-tighter">${(report.jam_kerja || 0).toFixed(2)}</p>
+                                <p class="font-black text-teal-500 text-2xl">${(report.jam_kerja || 0).toFixed(2)}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-slate-500">Total Ritase</p>
-                                <p class="font-black text-indigo-500 text-2xl tracking-tighter">${ritaseCount}</p>
+                                <p class="font-black text-indigo-500 text-2xl">${ritaseCount}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500">HM (Awal-Akhir)</p>
+                                <p class="font-bold text-sm">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500">KM (Awal-Akhir)</p>
+                                <p class="font-bold text-sm">${sanitizeHTML(report.km_awal_start)} - ${sanitizeHTML(report.km_akhir)}</p>
                             </div>
                         </div>
                         <button data-id="${report.id}" class="delete-btn absolute -top-1 -right-1 text-slate-400 hover:text-rose-500 h-8 w-8 rounded-full bg-white dark:bg-slate-800 shadow-md hover:bg-rose-500/10 transition-colors flex items-center justify-center">
@@ -791,60 +952,48 @@
             tanggalInput.value = today.toISOString().slice(0, 10);
             
             shiftInput.value = "";
-            metodeInput.value = "";
             jenisMuatanInput.value = "";
-            hmInputs.classList.add('hidden');
-            jamDuniaInputs.classList.add('hidden');
-            currentSessionRitase = {};
-            ritaseTableBody.innerHTML = '';
+            
             step2Div.classList.add('hidden');
             step1Div.classList.remove('hidden');
             if (clockInterval) clearInterval(clockInterval);
-            localStorage.removeItem(SESSION_KEY);
         }
+
+        function getActiveSession() {
+            const savedSessionJSON = localStorage.getItem(SESSION_KEY);
+            if (!savedSessionJSON) return null;
+            try {
+                return JSON.parse(savedSessionJSON);
+            } catch (e) {
+                localStorage.removeItem(SESSION_KEY);
+                return null;
+            }
+        }
+
         startSessionBtn.addEventListener('click', () => {
-            if (!tanggalInput.value || !shiftInput.value || !jenisMuatanInput.value) {
-                showMessage('Data Kurang', 'Silakan isi Tanggal, Shift, dan Jenis Muatan untuk memulai.', true);
+            if (!tanggalInput.value || !shiftInput.value || !jenisMuatanInput.value || !hmAwalStartInput.value || !kmAwalStartInput.value || !unitTypeStartInput.value || !unitIdStartInput.value) {
+                showMessage('Data Kurang', 'Silakan isi semua kolom untuk memulai sesi.', true);
                 return;
             }
-            currentSessionRitase = createInitialRitaseData(shiftInput.value);
-            localStorage.setItem(SESSION_KEY, JSON.stringify({
+
+            const sessionData = {
+                id: `session_${Date.now()}`,
+                status: 'active',
                 tanggal: tanggalInput.value,
                 shift: shiftInput.value,
                 jenisMuatan: jenisMuatanInput.value,
-                ritase: currentSessionRitase
-            }));
-            activateStep2();
+                unitType: unitTypeStartInput.value.toUpperCase(),
+                unitId: unitIdStartInput.value.toUpperCase(),
+                hmAwal: hmAwalStartInput.value,
+                kmAwal: kmAwalStartInput.value,
+                ritase: createInitialRitaseData(shiftInput.value),
+                fuel_logs: [],
+            };
+            
+            localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+            resumeSession(sessionData);
         });
 
-        function restoreActiveSession() {
-            const savedSession = localStorage.getItem(SESSION_KEY);
-            if (savedSession) {
-                try {
-                    const sessionData = JSON.parse(savedSession);
-                    tanggalInput.value = sessionData.tanggal;
-                    shiftInput.value = sessionData.shift;
-                    jenisMuatanInput.value = sessionData.jenisMuatan;
-                    currentSessionRitase = sessionData.ritase;
-                    
-                    showMessage('Sesi Dipulihkan', 'Sesi kerja Anda yang belum selesai telah dipulihkan.');
-                    activateStep2();
-                } catch (e) {
-                    console.error("Gagal memulihkan sesi:", e);
-                    localStorage.removeItem(SESSION_KEY);
-                }
-            }
-        }
-
-        function activateStep2() {
-            step1Div.classList.add('hidden');
-            step2Div.classList.remove('hidden');
-            step1Summary.innerHTML = `Laporan untuk: ${formatDate(tanggalInput.value, true)}, Shift ${sanitizeHTML(shiftInput.value)}, Muatan ${sanitizeHTML(jenisMuatanInput.value)}`;
-            renderRitaseTable(ritaseTableBody, currentSessionRitase, shiftInput.value);
-            updateClock();
-            if (clockInterval) clearInterval(clockInterval);
-            clockInterval = setInterval(updateClock, 1000);
-        }
         function createInitialRitaseData(shift) {
             const initialData = {};
             const startHour = (shift === 'Siang') ? 7 : 19;
@@ -879,14 +1028,16 @@
                 const ritaseEntries = ritaseData[hourKey] || [];
                 row.innerHTML = `
                     <td class="p-3 font-medium">${hourKey}</td>
-                    <td class="p-3">${ritaseEntries.sort((a, b) => a - b).join(', ') || '<span class="text-slate-500">-</span>'}</td>
+                    <td class="p-3">${ritaseEntries.map(m => String(m).padStart(2, '0')).sort((a, b) => a - b).join(', ') || '<span class="text-slate-500">-</span>'}</td>
                 `;
                 container.appendChild(row);
             });
         }
         function updateClock() {
+            const session = getActiveSession();
+            if (!session) return;
             currentTimeEl.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const isWithinShift = checkIsWithinShift(shiftInput.value);
+            const isWithinShift = checkIsWithinShift(session.shift);
             recordRitaseBtn.disabled = !isWithinShift;
             recordRitaseBtn.title = isWithinShift ? 'Catat waktu ritase saat ini' : 'Di luar jam shift yang dipilih';
         }
@@ -899,42 +1050,156 @@
             }
             return false;
         }
+        
          function recordRitase() {
+            const session = getActiveSession();
+            if (!session) return;
+
             const now = new Date();
             const hourKey = now.getHours().toString().padStart(2, '0') + ':00';
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            if (currentSessionRitase.hasOwnProperty(hourKey)) {
-                currentSessionRitase[hourKey].push(minutes);
-                renderRitaseTable(ritaseTableBody, currentSessionRitase, shiftInput.value);
-                try {
-                    const sessionData = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}');
-                    sessionData.ritase = currentSessionRitase;
-                    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
-                } catch(e) {
-                    console.error("Gagal memperbarui sesi di localStorage:", e);
-                }
+            const minutes = now.getMinutes();
+
+            if (session.ritase.hasOwnProperty(hourKey)) {
+                session.ritase[hourKey].push(minutes);
+                renderRitaseTable(ritaseTableBody, session.ritase, session.shift);
+                updateRitaseSummary(session.ritase, session.tanggal, session.shift);
+                localStorage.setItem(SESSION_KEY, JSON.stringify(session));
             } else {
                  showMessage("Di Luar Jam Kerja", `Jam ${hourKey} tidak termasuk dalam shift yang dipilih.`, true);
             }
         }
+
+        function updateRitaseSummary(ritaseData, sessionDate, sessionShift) {
+            const allRitase = [];
+            const baseDate = new Date(sessionDate + 'T00:00:00');
+
+            Object.entries(ritaseData).forEach(([hourKey, minutes]) => {
+                const hour = parseInt(hourKey.split(':')[0]);
+                minutes.forEach(minute => {
+                    let ritaseDate = new Date(baseDate);
+                    if (sessionShift === 'Malam' && hour < 7) {
+                        ritaseDate.setDate(ritaseDate.getDate() + 1);
+                    }
+                    ritaseDate.setHours(hour, minute, 0, 0);
+                    allRitase.push(ritaseDate);
+                });
+            });
+
+            allRitase.sort((a, b) => a - b);
+
+            totalRitaseSummary.textContent = allRitase.length;
+
+            if (allRitase.length > 1) {
+                let totalDiff = 0;
+                for (let i = 1; i < allRitase.length; i++) {
+                    totalDiff += (allRitase[i] - allRitase[i-1]);
+                }
+                const avgDiffSeconds = (totalDiff / (allRitase.length - 1)) / 1000;
+                const avgMinutes = Math.floor(avgDiffSeconds / 60);
+                const avgSeconds = Math.round(avgDiffSeconds % 60);
+                cycleTimeSummary.textContent = `${avgMinutes}m ${avgSeconds}s`;
+            } else {
+                cycleTimeSummary.textContent = '0m 0s';
+            }
+        }
+
+        saveFuelBtn.addEventListener('click', () => {
+            const session = getActiveSession();
+            if (!session) return;
+
+            const hm = parseFloat(hmFuelInput.value);
+            const liter = parseFloat(fuelLiterInput.value);
+
+            if (isNaN(hm) || isNaN(liter) || hm <= 0 || liter <= 0) {
+                showMessage('Data Fuel Tidak Valid', 'HM dan Liter harus angka positif.', true);
+                return;
+            }
+
+            if (!session.fuel_logs) {
+                session.fuel_logs = [];
+            }
+            session.fuel_logs.push({ hm, liter, timestamp: new Date().toISOString() });
+            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+            
+            renderFuelLogHistory(session.fuel_logs);
+            hmFuelInput.value = '';
+            fuelLiterInput.value = '';
+            showMessage('Sukses', 'Catatan pengisian fuel berhasil disimpan.');
+        });
+
+        function renderFuelLogHistory(fuelLogs) {
+            fuelLogHistoryContainer.innerHTML = '';
+            if (!fuelLogs || fuelLogs.length === 0) return;
+
+            let historyHTML = '<h4 class="text-sm font-bold mt-4 mb-2">Riwayat Fuel:</h4><ul class="text-sm space-y-1">';
+            fuelLogs.forEach(log => {
+                historyHTML += `<li class="text-slate-600 dark:text-slate-300 p-2 rounded-md bg-slate-100 dark:bg-slate-700/50">- HM ${log.hm}: ${log.liter} Liter</li>`;
+            });
+            historyHTML += '</ul>';
+            fuelLogHistoryContainer.innerHTML = historyHTML;
+        }
+
         cancelSessionBtn.addEventListener('click', () => {
-            showConfirm('Batalkan Sesi?', 'Semua data ritase yang belum disimpan akan hilang. Anda yakin?', () => {
+            showConfirm('Batalkan Sesi?', 'Semua data ritase dan fuel yang belum disimpan akan hilang. Anda yakin?', () => {
+                localStorage.removeItem(SESSION_KEY);
                 resetForm();
+                updateDashboardView();
+                showView('dashboard');
             });
         });
+
+        newSessionBtn.addEventListener('click', () => {
+            const session = getActiveSession();
+            if (session) {
+                showMessage('Sesi Masih Aktif', 'Selesaikan atau batalkan sesi yang sedang berjalan sebelum memulai sesi baru.', true);
+                return;
+            }
+            resetForm();
+            showView('form');
+        });
+
+        backToDashboardBtn.addEventListener('click', () => {
+            showView('dashboard');
+            updateDashboardView();
+        });
+
         recordRitaseBtn.addEventListener('click', recordRitase);
         
         function showReportDetail(report) {
             detailModalTitle.textContent = `Detail Laporan`;
-            detailModalInfo.innerHTML = `${formatDate(report.tanggal, true)} | Unit: ${sanitizeHTML(report.unit_id)}`;
-            const detailTableContainer = document.createElement('table');
-            detailTableContainer.className = 'w-full text-sm';
-            detailTableContainer.innerHTML = `<thead class="bg-black/5 dark:bg-white/5"><tr><th class="p-2 font-semibold text-left w-1/4">Waktu</th><th class="p-2 font-semibold text-left">Ritase Tercatat (Menit)</th></tr></thead>`;
-            const detailTbody = document.createElement('tbody');
-            renderRitaseTable(detailTbody, report.ritase, report.shift);
-            detailTableContainer.appendChild(detailTbody);
-            detailModalRitaseTable.innerHTML = '';
-            detailModalRitaseTable.appendChild(detailTableContainer);
+            let extraInfo = ` | Unit: ${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}`;
+            if(report.hm_awal_start) {
+                extraInfo += `<br>HM: ${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)} | KM: ${sanitizeHTML(report.km_awal_start)} - ${sanitizeHTML(report.km_akhir)}`
+            }
+            detailModalInfo.innerHTML = `${formatDate(report.tanggal, true)}${extraInfo}`;
+            
+            let contentHTML = `
+                <div class="overflow-x-auto bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-white/10 shadow-inner">
+                    <h4 class="font-bold mb-2">Tabel Ritase</h4>
+                    <table class="w-full text-sm">
+                        <thead class="bg-black/5 dark:bg-white/5"><tr><th class="p-2 font-semibold text-left w-1/4">Waktu</th><th class="p-2 font-semibold text-left">Ritase Tercatat (Menit)</th></tr></thead>
+                        <tbody id="detail-ritase-tbody"></tbody>
+                    </table>
+                </div>
+            `;
+
+            if (report.fuel_logs && report.fuel_logs.length > 0) {
+                contentHTML += `
+                <div class="mt-4 overflow-x-auto bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-white/10 shadow-inner">
+                    <h4 class="font-bold mb-2">Riwayat Pengisian Fuel</h4>
+                    <table class="w-full text-sm">
+                        <thead class="bg-black/5 dark:bg-white/5"><tr><th class="p-2 font-semibold text-left">HM</th><th class="p-2 font-semibold text-left">Liter</th></tr></thead>
+                        <tbody>
+                            ${report.fuel_logs.map(log => `<tr><td class="p-2">${log.hm}</td><td class="p-2">${log.liter} L</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                `;
+            }
+
+            detailModalContent.innerHTML = contentHTML;
+            renderRitaseTable(el('#detail-ritase-tbody'), report.ritase, report.shift);
+
             detailModal.dataset.reportId = report.id;
             detailModal.classList.replace('hidden', 'flex');
         }
@@ -947,7 +1212,6 @@
         messageModalCloseBtn.addEventListener('click', () => messageModal.classList.replace('flex', 'hidden'));
         closeDetailModalBtn.addEventListener('click', () => detailModal.classList.replace('flex', 'hidden'));
         closeDetailModalBtn2.addEventListener('click', () => detailModal.classList.replace('flex', 'hidden'));
-        confirmModalCancelBtn.addEventListener('click', () => { confirmModal.classList.replace('flex', 'hidden'); confirmCallback = null; });
         confirmModalConfirmBtn.addEventListener('click', () => {
             if (typeof confirmCallback === 'function') confirmCallback();
             confirmModal.classList.replace('flex', 'hidden');
@@ -958,64 +1222,127 @@
              const report = allReports.find(r => r.id === reportId);
              if(report) exportSingleReportToPdf(report);
         });
-        metodeInput.addEventListener('change', (e) => {
-            hmInputs.classList.toggle('hidden', e.target.value !== 'hm');
-            jamDuniaInputs.classList.toggle('hidden', e.target.value !== 'jam_dunia');
-        });
         
         function exportSingleReportToPdf(report) {
              const { jsPDF } = window.jspdf; 
              const doc = new jsPDF();
              const pageW = doc.internal.pageSize.getWidth();
+             const margin = 14;
              const primaryColor = '#0d9488';
+             const greyColor = '#475569';
+             let lastY = 0;
              
+             // Header
              doc.setFillColor(primaryColor);
              doc.rect(0, 0, pageW, 30, 'F');
              doc.setFont('helvetica', 'bold');
              doc.setFontSize(18);
              doc.setTextColor(255, 255, 255);
-             doc.text('DETAIL LAPORAN KERJA', pageW / 2, 15, { align: 'center' });
-             doc.setFontSize(10);
-             doc.text(formatDate(report.tanggal, true), pageW / 2, 23, { align: 'center' });
+             doc.text('LAPORAN KERJA HARIAN', pageW / 2, 18, { align: 'center' });
              
-             const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
+             // Info Utama
+             doc.setFontSize(11);
+             doc.setTextColor(greyColor);
+             doc.text(`Operator: ${sanitizeHTML(report.nama_operator.toUpperCase())}`, margin, 45);
+             doc.text(`Tanggal: ${formatDate(report.tanggal, true)}`, pageW - margin, 45, { align: 'right' });
+             lastY = 50;
+             
              const infoBody = [
-                 ['Nama Operator', sanitizeHTML(report.nama_operator.toUpperCase())],
-                 ['Unit', `${sanitizeHTML(report.unit_id)} (${sanitizeHTML(report.unit_type)})`],
-                 ['Shift / Muatan', `${sanitizeHTML(report.shift)} / ${sanitizeHTML(report.jenis_muatan)}`],
+                 [{content: 'Unit', styles: {fontStyle: 'bold'}}, `${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}`],
+                 [{content: 'Shift', styles: {fontStyle: 'bold'}}, sanitizeHTML(report.shift)],
+                 [{content: 'Muatan', styles: {fontStyle: 'bold'}}, sanitizeHTML(report.jenis_muatan)],
+                 [{content: 'Jam Kerja', styles: {fontStyle: 'bold'}}, `${(report.jam_kerja || 0).toFixed(2)} Jam`],
              ];
-             if(report.metode === 'hm') {
-                 infoBody.push(['HM Awal', report.hm_awal ? report.hm_awal.toFixed(2) : '-']);
-                 infoBody.push(['HM Akhir', report.hm_akhir ? report.hm_akhir.toFixed(2) : '-']);
-             } else {
-                 infoBody.push(['Jam Mulai', report.jam_mulai || '-']);
-                 infoBody.push(['Jam Selesai', report.jam_selesai || '-']);
-                 infoBody.push(['Istirahat', `${report.jam_istirahat || 0} Jam`]);
-             }
-             infoBody.push(['Total Jam Kerja', `${(report.jam_kerja || 0).toFixed(2)} Jam`]);
-             infoBody.push(['Total Ritase', `${ritaseCount} Rit`]);
              
-             doc.autoTable({ startY: 40, body: infoBody, theme: 'grid', styles: { fontSize: 10, cellPadding: 2 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50}, 1: {cellWidth: 'auto'} } });
-             let lastY = doc.lastAutoTable.finalY + 5;
-             
+             doc.autoTable({
+                 startY: lastY,
+                 body: infoBody,
+                 theme: 'plain',
+                 styles: { fontSize: 10, cellPadding: 1.5 },
+                 columnStyles: { 0: { cellWidth: 35 } }
+             });
+             lastY = doc.lastAutoTable.finalY;
+
+             const meterBody = [
+                ['HM Awal', sanitizeHTML(report.hm_awal_start) || '-', 'KM Awal', sanitizeHTML(report.km_awal_start) || '-'],
+                ['HM Akhir', sanitizeHTML(report.hm_akhir) || '-', 'KM Akhir', sanitizeHTML(report.km_akhir) || '-'],
+             ];
+
+             doc.autoTable({
+                startY: lastY,
+                body: meterBody,
+                theme: 'grid',
+                styles: { fontSize: 10, cellPadding: 2, halign: 'center' },
+                headStyles: { fillColor: '#f1f5f9', textColor: greyColor, fontStyle: 'bold' },
+             })
+             lastY = doc.lastAutoTable.finalY + 10;
+
+             // Tabel Ritase
              doc.setFont('helvetica', 'bold');
              doc.setFontSize(12);
-             doc.text('Tabel Ritase', 14, lastY);
+             doc.setTextColor(greyColor);
+             doc.text('Log Ritase', margin, lastY);
+             lastY += 2;
+
              const ritaseHead = [['Waktu', 'Ritase Tercatat (Menit)']];
              const ritaseBody = Object.keys(report.ritase).sort(sortRitaseHours(report.shift))
-                .map(hour => [hour, (report.ritase[hour] || []).sort((a,b) => a - b).join(', ')]);
+                .map(hour => [hour, (report.ritase[hour] || []).map(m => String(m).padStart(2, '0')).sort((a,b) => a - b).join(', ')]);
              
-             doc.autoTable({ head: ritaseHead, body: ritaseBody, startY: lastY + 2, theme: 'striped', headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, styles: { cellPadding: 2, fontSize: 9, valign: 'top' }, columnStyles: { 0: { cellWidth: 40 } } });
+             doc.autoTable({ 
+                 head: ritaseHead, 
+                 body: ritaseBody, 
+                 startY: lastY, 
+                 theme: 'striped', 
+                 headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, 
+                 styles: { cellPadding: 2, fontSize: 9, valign: 'top' }, 
+                 columnStyles: { 0: { cellWidth: 40 } } 
+            });
              lastY = doc.lastAutoTable.finalY + 10;
-             
-             if(report.note) {
-                 doc.setFontSize(10);
+
+             // Tabel Fuel
+             if (report.fuel_logs && report.fuel_logs.length > 0) {
                  doc.setFont('helvetica', 'bold');
-                 doc.text('Catatan:', 14, lastY);
-                 doc.setFont('helvetica', 'normal');
-                 doc.text(doc.splitTextToSize(report.note, pageW - 28), 14, lastY + 5);
+                 doc.setFontSize(12);
+                 doc.setTextColor(greyColor);
+                 doc.text('Log Pengisian Fuel', margin, lastY);
+                 lastY += 2;
+
+                 const fuelHead = [['HM Pengisian', 'Jumlah (Liter)']];
+                 const fuelBody = report.fuel_logs.map(log => [log.hm, log.liter]);
+                 doc.autoTable({ 
+                     head: fuelHead, 
+                     body: fuelBody, 
+                     startY: lastY, 
+                     theme: 'striped', 
+                     headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, 
+                     styles: { cellPadding: 2, fontSize: 9 } 
+                });
+                 lastY = doc.lastAutoTable.finalY + 10;
              }
-             const safeFileName = `Laporan_${report.tanggal}_${report.unit_id.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+             
+             // Catatan
+             if(report.note) {
+                 doc.setFont('helvetica', 'bold');
+                 doc.setFontSize(12);
+                 doc.setTextColor(greyColor);
+                 doc.text('Catatan:', margin, lastY);
+                 lastY += 5;
+                 doc.setFont('helvetica', 'normal');
+                 doc.setFontSize(10);
+                 doc.text(doc.splitTextToSize(report.note, pageW - (margin * 2)), margin, lastY);
+             }
+
+             // Footer
+             const pageCount = doc.internal.getNumberOfPages();
+             for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text(`Laporan dibuat oleh sistem pada ${new Date().toLocaleString('id-ID')}`, margin, doc.internal.pageSize.getHeight() - 10);
+                doc.text(`Halaman ${i} dari ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 10, {align: 'right'});
+             }
+
+             const safeFileName = `LaporanHarian_${report.tanggal}_${report.unit_id.replace(/[^a-z0-9]/gi, '_')}.pdf`;
              doc.save(safeFileName);
              showMessage('Berhasil!', `Laporan PDF berhasil dibuat!`);
         }
@@ -1076,8 +1403,8 @@
             // Info Karyawan
             doc.setFontSize(10);
             doc.setTextColor(0,0,0);
-            doc.text(`Nama: ${sanitizeHTML(currentUser.user_metadata?.name || currentUser.email)}`, 14, 40);
-            doc.text(`Email: ${sanitizeHTML(currentUser.email)}`, 14, 45);
+            doc.text(`Nama: ${sanitizeHTML(currentUser.full_name)}`, 14, 40);
+            doc.text(`NIK: ${sanitizeHTML(currentUser.nik)}`, 14, 45);
 
             // Rincian Pendapatan
             doc.setFont('helvetica', 'bold');
@@ -1135,10 +1462,10 @@
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.text('Lampiran: Log Kerja Harian', 14, 20);
-            const detailHead = [['Tanggal', 'Unit ID', 'Tipe', 'Jam Kerja', 'Jml Ritase']];
+            const detailHead = [['Tanggal', 'Unit', 'Tipe', 'Jam Kerja', 'Jml Ritase']];
             const detailBody = filteredReports.map(report => {
                 const ritaseCount = Object.values(report.ritase || {}).reduce((sum, arr) => sum + arr.length, 0);
-                return [ formatDate(report.tanggal), sanitizeHTML(report.unit_id), sanitizeHTML(report.jenis_muatan), (report.jam_kerja || 0).toFixed(2), ritaseCount ];
+                return [ formatDate(report.tanggal), `${report.unit_type} ${report.unit_id}`, report.jenis_muatan, (report.jam_kerja || 0).toFixed(2), ritaseCount ];
             });
             doc.autoTable({ head: detailHead, body: detailBody, startY: 25, theme: 'striped', headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' }, styles: { fontSize: 9 }, columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } } });
 
@@ -1150,7 +1477,7 @@
         
         exportPdfBtn.addEventListener('click', exportMonthlySummaryToPdf);
         
-        resetForm();
+        checkLoginState();
     });
     </script>
 </body>
