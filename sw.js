@@ -22,8 +22,7 @@ const urlsToCache = [
   `${BASE_URL}/webfonts/fa-regular-400.woff2`,
   `${BASE_URL}/webfonts/fa-brands-400.woff2`,
   // Tambahkan path ke file ikon Anda
-  `${BASE_URL}/images/icon-192.png`,
-  `${BASE_URL}/images/icon-512.png`
+  `${BASE_URL}/Icona/icon.png`
 ];
 
 // Event 'install': Dipicu saat service worker pertama kali diinstal.
