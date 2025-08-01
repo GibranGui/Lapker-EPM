@@ -9,16 +9,16 @@
     <meta name="theme-color" content="#0d9488">
 
     <!-- Aset Lokal untuk Akses Offline -->
-    <script src="./js/tailwindcss.js"></script>
-    <link href="./css/inter-font.css" rel="stylesheet">
-    <link rel="stylesheet" href="./css/fontawesome.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
-    <!-- Import Supabase Client Library (Lokal) -->
-    <script src="./js/supabase.min.js"></script>
+    <!-- Import Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Library PDF Lokal -->
-    <script src="./js/jspdf.umd.min.js"></script>
-    <script src="./js/jspdf.plugin.autotable.min.js"></script>
+    <!-- Library PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
     <style>
         :root {
@@ -49,7 +49,7 @@
         .section-title { font-size: 1.5rem; font-weight: 800; color: inherit; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
         .section-title i { color: var(--primary); }
         .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); }
-        .uppercase { text-transform: uppercase; } /* [NEW] Class untuk uppercase */
+        .uppercase { text-transform: uppercase; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
         .fade-in { animation: fadeIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
@@ -82,7 +82,6 @@
                 <form id="login-form" class="">
                     <h2 class="text-2xl font-bold mb-6">Masuk</h2>
                     <div class="space-y-4">
-                        <!-- [MODIFIED] Input NIK diubah ke type="text" dan class="uppercase" -->
                         <div class="form-input-group"><i class="fas fa-id-card form-input-icon"></i><input type="text" id="login-nik" class="form-input uppercase" placeholder="Nomor Induk Karyawan (NIK)" required></div>
                         <button type="submit" class="btn btn-primary w-full !py-3">Masuk</button>
                     </div>
@@ -94,7 +93,6 @@
                     <h2 class="text-2xl font-bold mb-6">Daftar Akun Baru</h2>
                     <div class="space-y-4">
                         <div class="form-input-group"><i class="fas fa-user form-input-icon"></i><input type="text" id="register-name" class="form-input" placeholder="Nama Lengkap" required></div>
-                        <!-- [MODIFIED] Input NIK diubah ke type="text" dan class="uppercase" -->
                         <div class="form-input-group"><i class="fas fa-id-card form-input-icon"></i><input type="text" id="register-nik" class="form-input uppercase" placeholder="Nomor Induk Karyawan (NIK)" required></div>
                         <button type="submit" class="btn btn-secondary w-full !py-3">Daftar</button>
                     </div>
@@ -137,8 +135,9 @@
                             <h2 class="section-title mt-8"><i class="fas fa-play-circle"></i>Mulai Sesi Kerja Baru</h2>
                             <div class="space-y-5">
                                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                     <div class="form-input-group"><i class="fas fa-truck-pickup form-input-icon"></i><input type="text" id="unit-type-start" placeholder="Tipe Unit (Cth: DT)" class="form-input uppercase" required></div>
-                                     <div class="form-input-group"><i class="fas fa-hashtag form-input-icon"></i><input type="text" id="unit-id-start" placeholder="ID Unit (Cth: 80)" class="form-input uppercase" required></div>
+                                     <!-- [FIXED] Atribut 'required' dihapus dari sini untuk mencegah pemblokiran form -->
+                                     <div class="form-input-group"><i class="fas fa-truck-pickup form-input-icon"></i><input type="text" id="unit-type-start" placeholder="Tipe Unit (Cth: DT)" class="form-input uppercase"></div>
+                                     <div class="form-input-group"><i class="fas fa-hashtag form-input-icon"></i><input type="text" id="unit-id-start" placeholder="ID Unit (Cth: 80)" class="form-input uppercase"></div>
                                      <div class="form-input-group"><i class="fas fa-calendar-alt form-input-icon"></i><input type="date" id="tanggal" class="form-input"></div>
                                      <div class="form-input-group"><i class="fas fa-clock form-input-icon"></i><select id="shift" class="form-input"><option value="" disabled selected>Pilih Shift...</option><option value="Siang">Siang (07-19)</option><option value="Malam">Malam (19-07)</option></select></div>
                                      <div class="form-input-group"><i class="fas fa-truck-loading form-input-icon"></i><select id="jenis-muatan" class="form-input"><option value="" disabled selected>Pilih Muatan...</option><option value="OB">OB</option><option value="COAL">COAL</option></select></div>
@@ -630,7 +629,6 @@
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            // [MODIFIED] Ambil nilai NIK dan ubah ke uppercase
             const nik = el('#login-nik').value.toUpperCase();
             if (!nik) {
                 showMessage('Login Gagal', 'NIK tidak boleh kosong.', true);
@@ -655,7 +653,6 @@
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const fullName = el('#register-name').value;
-            // [MODIFIED] Ambil nilai NIK dan ubah ke uppercase
             const nik = el('#register-nik').value.toUpperCase();
 
             if (!fullName || !nik) {
