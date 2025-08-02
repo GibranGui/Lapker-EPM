@@ -3,205 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Laporan Timesheet</title>
+    <title>Dasbor Admin Modern - Timesheet</title>
     
     <!-- Tailwind CSS & Font -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Supabase Client -->
+    <!-- Supabase & Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- jspdf for PDF Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root {
-            --primary-color: #0d9488;
-            --light-bg: #f0f5f9;
-            --dark-bg: #0f172a;
-            --light-text: #1e293b;
-            --dark-text: #e2e8f0;
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--light-bg);
-            color: var(--light-text);
-        }
-        .form-input {
-             width: 100%;
-             border: 1px solid #cbd5e1;
-             border-radius: 0.5rem;
-             padding: 0.75rem 1rem;
-             font-size: 1rem;
-             background-color: white;
-             transition: all 0.3s ease;
-        }
-       .form-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
-        }
-        .stat-card {
-            background-color: white;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-        }
-        .report-card {
-            background-color: white;
-            border-radius: 0.75rem;
-            border: 1px solid #e2e8f0;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-        .report-card:hover {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 1px var(--primary-color);
-        }
-        .modal-bg {
-            background-color: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(8px);
-        }
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.6rem 1.25rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-        }
-        .btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #0f766e;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.98) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f7f9fc; }
+        .sidebar { transition: transform 0.3s ease-in-out; }
+        .sidebar-link { display: flex; align-items: center; padding: 0.85rem 1.5rem; color: #8a99b5; font-weight: 600; border-radius: 0.75rem; margin: 0 1rem; transition: all 0.2s ease; cursor: pointer; }
+        .sidebar-link:hover { background-color: #f0f4ff; color: #4318ff; }
+        .sidebar-link.active { background: linear-gradient(90deg, rgba(67, 24, 255, 0.1) 0%, rgba(67, 24, 255, 0) 100%); color: #4318ff; border-right: 4px solid #4318ff; }
+        .sidebar-link i { width: 24px; text-align: center; }
+        .form-input { background-color: white; border: 2px solid #e0e5f2; border-radius: 0.75rem; padding: 0.75rem 1rem; }
+        .form-input:focus { border-color: #4318ff; outline: none; }
+        .stat-card, .detail-card, .summary-card { background-color: white; border-radius: 1.25rem; border: 1px solid #e0e5f2; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03); transition: all 0.3s ease; }
+        .detail-card.verified { background-color: #f6f9ff; border-color: #c3d4ff; }
+        .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
     </style>
 </head>
-<body class="text-slate-800">
+<body class="flex min-h-screen">
 
-    <!-- Header -->
-    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-40">
-        <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap justify-between items-center py-3 gap-4">
-                <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-clipboard-user text-3xl text-teal-600"></i>
-                    <div>
-                        <h1 class="text-xl font-bold tracking-tight text-slate-900">Admin Timesheet</h1>
-                        <p class="text-xs text-slate-500">Laporan Harian Karyawan</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 bg-slate-100 p-2 rounded-lg">
-                    <label for="date-filter" class="font-semibold text-sm text-slate-600">Tanggal Laporan:</label>
-                    <input type="date" id="date-filter" class="form-input !p-2 !w-40">
-                </div>
+    <!-- Sidebar -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+    <aside id="sidebar" class="sidebar bg-white w-64 flex-shrink-0 border-r border-gray-200/50 fixed md:static inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 flex flex-col">
+        <div class="flex items-center justify-between p-4 md:p-6">
+            <h1 class="text-2xl font-bold text-gray-800">Dasbor<span class="text-blue-600">.</span></h1>
+            <button id="close-sidebar-btn" class="md:hidden text-gray-500 text-2xl">&times;</button>
+        </div>
+        <nav class="mt-8 space-y-2">
+            <a id="nav-ringkasan" class="sidebar-link"><i class="fa-solid fa-house-chimney mr-4"></i><span>Ringkasan</span></a>
+            <a id="nav-laporan-detail" class="sidebar-link active"><i class="fa-solid fa-file-invoice mr-4"></i><span>Laporan Detail</span></a>
+            <a id="nav-analitik" class="sidebar-link"><i class="fa-solid fa-chart-pie mr-4"></i><span>Analitik</span></a>
+        </nav>
+        <div class="p-6 mt-auto">
+            <div class="bg-gradient-to-br from-blue-600 to-purple-600 p-6 rounded-2xl text-white text-center">
+                <h3 class="font-bold text-lg">Butuh Bantuan?</h3>
+                <p class="text-xs mt-2 mb-4">Hubungi tim support kami jika Anda menemukan kendala.</p>
+                <a id="support-link" href="#" target="_blank" class="bg-white text-blue-600 font-bold py-2 px-4 rounded-lg text-sm w-full block">Hubungi Support</a>
             </div>
         </div>
-    </header>
+    </aside>
 
     <!-- Main Content -->
-    <main class="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        
-        <!-- Summary Stats -->
-        <section id="summary-section" class="mb-8">
-             <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
-                <h2 class="text-xl font-bold text-slate-700">Ringkasan Harian</h2>
-                <button id="export-daily-pdf-btn" class="btn btn-primary">
-                    <i class="fa-solid fa-file-pdf mr-2"></i>
-                    Export PDF Harian
-                </button>
+    <div class="flex-grow flex flex-col">
+        <header class="bg-white/80 backdrop-blur-sm sticky top-0 z-30 p-4 border-b border-gray-200/80">
+            <div class="flex items-center justify-between">
+                <button id="open-sidebar-btn" class="md:hidden text-gray-600 text-xl"><i class="fas fa-bars"></i></button>
+                <div class="flex-grow text-center md:text-left"><h2 id="page-title" class="text-xl font-bold text-gray-800">Verifikasi Laporan Detail</h2></div>
+                <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">A</div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <!-- Card Karyawan Melapor -->
-                <div class="stat-card">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-indigo-100 text-indigo-600 rounded-full h-12 w-12 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-users"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-slate-500">Karyawan Melapor</p>
-                            <p id="total-karyawan" class="text-3xl font-extrabold text-slate-800">0</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- Card Ritase OB -->
-                <div class="stat-card">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-amber-100 text-amber-600 rounded-full h-12 w-12 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-truck-ramp-box"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-slate-500">Total Ritase OB</p>
-                            <p id="total-ritase-ob" class="text-3xl font-extrabold text-slate-800">0</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- Card Ritase COAL -->
-                <div class="stat-card">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-slate-200 text-slate-700 rounded-full h-12 w-12 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-gem"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-slate-500">Total Ritase COAL</p>
-                            <p id="total-ritase-coal" class="text-3xl font-extrabold text-slate-800">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+        </header>
 
-        <!-- Reports List -->
-        <section>
-            <h2 class="text-xl font-bold mb-4 text-slate-700">Detail Laporan Karyawan</h2>
-            <div id="reports-container" class="space-y-3">
-                <!-- Report cards will be inserted here -->
+        <main class="flex-grow p-4 md:p-8 lg:p-10">
+            <div id="global-loading-state" class="text-center py-16 hidden"><i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i><p class="mt-4 text-gray-500">Memuat data...</p></div>
+            
+            <div id="filter-container" class="flex flex-col md:flex-row justify-end gap-3 mb-4">
+                <select id="shift-filter" class="form-input w-full md:w-auto">
+                    <option value="semua">Semua Shift</option>
+                    <option value="Siang">Shift Siang</option>
+                    <option value="Malam">Shift Malam</option>
+                </select>
+                <input type="date" id="date-filter" class="form-input w-full md:w-auto">
             </div>
-            <div id="loading-state" class="text-center py-16 hidden">
-                <i class="fas fa-spinner fa-spin text-4xl text-teal-500"></i>
-                <p class="mt-4 text-slate-500">Memuat laporan...</p>
-            </div>
-            <div id="empty-state" class="text-center py-16 hidden bg-white rounded-lg border border-dashed mt-6">
-                <i class="fa-solid fa-folder-open text-5xl text-slate-400 mb-5"></i>
-                <p class="font-semibold text-xl">Tidak Ada Laporan</p>
-                <p class="text-sm text-slate-500 mt-2">Tidak ada laporan yang ditemukan untuk tanggal yang dipilih.</p>
-            </div>
-        </section>
-    </main>
 
-    <!-- Detail Modal -->
+            <!-- Halaman Ringkasan -->
+            <div id="page-ringkasan" class="hidden">
+                <div id="ringkasan-content" class="space-y-6">
+                    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="stat-card p-6"><div class="flex items-center justify-between"><p class="text-gray-500 font-bold">Karyawan Melapor</p><div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl"><i class="fa-solid fa-users"></i></div></div><p id="total-karyawan" class="text-4xl font-extrabold text-gray-800 mt-4">0</p></div>
+                        <div class="stat-card p-6"><div class="flex items-center justify-between"><p class="text-gray-500 font-bold">Total Ritase OB</p><div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl"><i class="fa-solid fa-truck-ramp-box"></i></div></div><p id="total-ritase-ob" class="text-4xl font-extrabold text-gray-800 mt-4">0</p></div>
+                        <div class="stat-card p-6"><div class="flex items-center justify-between"><p class="text-gray-500 font-bold">Total Ritase COAL</p><div class="w-12 h-12 rounded-xl bg-gray-200 text-gray-700 flex items-center justify-center text-xl"><i class="fa-solid fa-gem"></i></div></div><p id="total-ritase-coal" class="text-4xl font-extrabold text-gray-800 mt-4">0</p></div>
+                        <div class="stat-card p-6"><div class="flex items-center justify-between"><p class="text-gray-500 font-bold">Karyawan Beroperasi</p><div class="w-12 h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center text-xl"><i class="fa-solid fa-person-digging"></i></div></div><p id="operating-karyawan" class="text-4xl font-extrabold text-gray-800 mt-4">0</p></div>
+                    </section>
+                    <section>
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">Ringkasan Per Karyawan</h3>
+                        <div id="summary-cards-container" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Halaman Laporan Detail -->
+            <div id="page-laporan-detail" class="hidden">
+                <div id="detail-reports-container" class="space-y-8">
+                    <div id="day-shift-section">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center"><i class="fa-regular fa-sun mr-3 text-yellow-500"></i>Shift Siang</h2>
+                        <div><h3 class="text-lg font-bold text-gray-500 mb-3">Belum Diverifikasi</h3><div id="day-unverified-reports" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5"></div></div>
+                        <div class="border-t border-gray-200 pt-6 mt-6"><h3 class="text-lg font-bold text-green-600 mb-3">Sudah Diverifikasi</h3><div id="day-verified-reports" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5"></div></div>
+                    </div>
+                    <div id="night-shift-section" class="border-t-2 border-dashed border-gray-300 pt-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center"><i class="fa-regular fa-moon mr-3 text-indigo-500"></i>Shift Malam</h2>
+                        <div><h3 class="text-lg font-bold text-gray-500 mb-3">Belum Diverifikasi</h3><div id="night-unverified-reports" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5"></div></div>
+                        <div class="border-t border-gray-200 pt-6 mt-6"><h3 class="text-lg font-bold text-green-600 mb-3">Sudah Diverifikasi</h3><div id="night-verified-reports" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Halaman Analitik -->
+            <div id="page-analitik" class="hidden">
+                <div id="analitik-content" class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl"><h3 class="text-xl font-bold text-gray-800 mb-4">Perbandingan Ritase</h3><canvas id="ritaseComparisonChart"></canvas></div>
+                    <div class="lg:col-span-3 bg-white p-6 rounded-2xl"><h3 class="text-xl font-bold text-gray-800 mb-4">Papan Peringkat Produktivitas (Top 5)</h3><canvas id="productivityLeaderboardChart"></canvas></div>
+                </div>
+            </div>
+            
+            <div id="global-empty-state" class="text-center py-16 hidden"><i class="fa-solid fa-folder-open text-5xl text-gray-400 mb-5"></i><p class="font-semibold text-xl">Tidak Ada Laporan</p><p class="text-sm text-gray-500 mt-2">Tidak ada laporan yang ditemukan untuk tanggal dan shift yang dipilih.</p></div>
+        </main>
+    </div>
+
+    <!-- Detail Modal (Shared) -->
     <div id="detail-modal" class="fixed inset-0 modal-bg items-center justify-center hidden z-50 p-4 overflow-y-auto">
-        <div class="bg-white p-6 w-full max-w-2xl m-4 fade-in rounded-xl">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h2 id="detail-modal-title" class="text-xl font-bold uppercase">Detail Laporan</h2>
-                    <p id="detail-modal-info" class="text-sm text-slate-500"></p>
-                </div>
-                <button id="close-detail-modal-btn" class="text-slate-400 hover:text-slate-800 h-8 w-8 text-2xl">&times;</button>
-            </div>
+        <div class="bg-white p-6 w-full max-w-2xl m-auto fade-in rounded-2xl shadow-2xl">
+            <div class="flex justify-between items-center mb-4"><h2 id="detail-modal-title" class="text-xl font-bold uppercase text-gray-800"></h2><button id="close-detail-modal-btn" class="text-gray-400 hover:text-gray-800 h-8 w-8 text-2xl">&times;</button></div>
             <div id="detail-modal-content" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2"></div>
-            <div class="mt-6 flex gap-4">
-                <button id="close-detail-modal-btn-2" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-lg">Tutup</button>
-            </div>
+            <div class="mt-6"><button id="close-detail-modal-btn-2" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-4 rounded-lg">Tutup</button></div>
         </div>
     </div>
 
@@ -209,332 +134,383 @@
         // --- Inisialisasi Supabase ---
         const SUPABASE_URL = 'https://hwajcditsdmebqmflqsm.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3YWpjZGl0c2RtZWJxbWZscXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTMzOTEsImV4cCI6MjA2OTA2OTM5MX0.Puq5NWeNHdtHlE8bem4QUqvIcHVyqR_AR5IlpiG-hz8';
-
         let _supabase;
-        if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('URL_ANDA')) {
-            const { createClient } = supabase;
-            _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } else {
-            document.body.innerHTML = `<div class="p-8 text-center font-sans"><h1>Konfigurasi Supabase Diperlukan</h1><p>Masukkan URL dan Kunci Anon Supabase Anda di dalam script.</p></div>`;
-        }
+        try { _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) { document.body.innerHTML = `<h1>Konfigurasi Supabase Diperlukan</h1>`; }
         
-        // Global state to hold fetched reports for PDF export
-        let currentReports = [];
+        // --- State Aplikasi ---
+        const appState = {
+            currentDate: null,
+            reports: [],
+            verifiedStatus: {},
+            activePage: 'laporanDetail',
+            activeShift: 'semua'
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             const el = (selector) => document.querySelector(selector);
-
-            const dateFilter = el('#date-filter');
-            const reportsContainer = el('#reports-container');
-            const loadingState = el('#loading-state');
-            const emptyState = el('#empty-state');
             
-            // Summary elements
+            // --- Elemen DOM ---
+            const globalLoadingState = el('#global-loading-state');
+            const globalEmptyState = el('#global-empty-state');
+            const pageTitle = el('#page-title');
+            const navLinks = { ringkasan: el('#nav-ringkasan'), laporanDetail: el('#nav-laporan-detail'), analitik: el('#nav-analitik') };
+            const pages = { ringkasan: el('#page-ringkasan'), laporanDetail: el('#page-laporan-detail'), analitik: el('#page-analitik') };
+            const dateFilter = el('#date-filter');
+            const shiftFilter = el('#shift-filter');
             const totalKaryawanEl = el('#total-karyawan');
             const totalRitaseObEl = el('#total-ritase-ob');
             const totalRitaseCoalEl = el('#total-ritase-coal');
-            const exportDailyPdfBtn = el('#export-daily-pdf-btn');
-
-            // Modal elements
+            const operatingKaryawanEl = el('#operating-karyawan');
+            const summaryCardsContainer = el('#summary-cards-container');
+            const detailReportsContainer = el('#detail-reports-container');
+            const dayShiftSection = el('#day-shift-section');
+            const nightShiftSection = el('#night-shift-section');
+            const dayUnverifiedContainer = el('#day-unverified-reports');
+            const dayVerifiedContainer = el('#day-verified-reports');
+            const nightUnverifiedContainer = el('#night-unverified-reports');
+            const nightVerifiedContainer = el('#night-verified-reports');
             const detailModal = el('#detail-modal');
             const detailModalTitle = el('#detail-modal-title');
-            const detailModalInfo = el('#detail-modal-info');
             const detailModalContent = el('#detail-modal-content');
             const closeDetailModalBtn = el('#close-detail-modal-btn');
             const closeDetailModalBtn2 = el('#close-detail-modal-btn-2');
+            const supportLink = el('#support-link');
+            const sidebar = el('#sidebar');
+            const sidebarBackdrop = el('#sidebar-backdrop');
+            const openSidebarBtn = el('#open-sidebar-btn');
+            const closeSidebarBtn = el('#close-sidebar-btn');
 
-            // --- Utility Functions ---
-            const formatDate = (dateString, long = false) => {
-                const date = new Date(dateString);
-                const options = long 
-                    ? { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
-                    : { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' };
-                return date.toLocaleDateString('id-ID', options);
-            };
+            // --- Fungsi Utilitas ---
+            const sanitizeHTML = (str) => { const t = document.createElement('div'); t.textContent = str || ''; return t.innerHTML; };
+            const formatTime = (date) => date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 
-            const sanitizeHTML = (str) => {
-                if (!str) return '';
-                const temp = document.createElement('div');
-                temp.textContent = str;
-                return temp.innerHTML;
-            };
-
-            // --- Main Data Fetching and Rendering Logic ---
-            async function fetchAndDisplayReports(date) {
-                loadingState.classList.remove('hidden');
-                emptyState.classList.add('hidden');
-                reportsContainer.innerHTML = '';
-                currentReports = []; // Clear current reports
-                resetSummary();
-
-                if (!_supabase) return;
-
-                const { data: reports, error } = await _supabase
-                    .from('reports')
-                    .select('*')
-                    .eq('tanggal', date)
-                    .order('nama_operator', { ascending: true });
-
-                loadingState.classList.add('hidden');
-
-                if (error) {
-                    console.error('Error fetching reports:', error);
-                    emptyState.classList.remove('hidden');
-                    emptyState.querySelector('p').textContent = 'Gagal memuat laporan. Periksa koneksi Anda.';
-                    return;
-                }
-                
-                currentReports = reports; // Store fetched reports
-
-                if (reports.length === 0) {
-                    emptyState.classList.remove('hidden');
-                } else {
-                    displayReports(reports);
-                    calculateAndDisplaySummary(reports);
-                }
-            }
-            
-            function displayReports(reports) {
-                reportsContainer.innerHTML = '';
-                reports.forEach(report => {
-                    const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).reduce((sum, arr) => sum + arr.length, 0);
-                    const muatanTagColor = report.jenis_muatan === 'COAL' ? 'bg-slate-800 text-white' : 'bg-amber-100 text-amber-800';
-                    
-                    const card = document.createElement('div');
-                    card.className = 'report-card cursor-pointer p-4 fade-in flex flex-col sm:flex-row items-start sm:items-center gap-4';
-                    card.dataset.report = JSON.stringify(report); // Store full report data
-                    
-                    card.innerHTML = `
-                        <div class="w-full sm:w-1/3">
-                            <p class="font-bold text-base text-slate-800 uppercase">${sanitizeHTML(report.nama_operator)}</p>
-                            <p class="text-xs text-slate-500">NIK: ${sanitizeHTML(report.user_nik)}</p>
-                        </div>
-                        <div class="w-full sm:w-2/3 grid grid-cols-3 gap-2 text-center text-sm">
-                            <div>
-                                <p class="text-xs text-slate-500">Jam Kerja</p>
-                                <p class="font-bold text-lg text-teal-600">${(report.jam_kerja || 0).toFixed(2)}</p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-500">Unit</p>
-                                <p class="font-semibold text-base">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-500">Ritase</p>
-                                <p class="font-bold text-lg text-indigo-600">${ritaseCount} <span class="text-xs font-normal px-2 py-0.5 rounded-full ${muatanTagColor}">${sanitizeHTML(report.jenis_muatan)}</span></p>
-                            </div>
-                        </div>
-                    `;
-                    card.addEventListener('click', () => showReportDetail(report));
-                    reportsContainer.appendChild(card);
-                });
-            }
-
-            function calculateAndDisplaySummary(reports) {
-                let totalOb = 0;
-                let totalCoal = 0;
-                
-                reports.forEach(report => {
-                    const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).reduce((sum, arr) => sum + arr.length, 0);
-                    if (report.jenis_muatan === 'OB') {
-                        totalOb += ritaseCount;
-                    } else if (report.jenis_muatan === 'COAL') {
-                        totalCoal += ritaseCount;
-                    }
-                });
-
-                totalKaryawanEl.textContent = reports.length;
-                totalRitaseObEl.textContent = totalOb;
-                totalRitaseCoalEl.textContent = totalCoal;
-            }
-
-            function resetSummary() {
-                totalKaryawanEl.textContent = '0';
-                totalRitaseObEl.textContent = '0';
-                totalRitaseCoalEl.textContent = '0';
-            }
-
-            function showReportDetail(report) {
+            // --- [UPDATE] Logika Kalkulasi diperbarui untuk Cycle Time ---
+            function calculateWorkHoursV2(report) {
                 const ritaseData = JSON.parse(report.ritase || '{}');
-                const fuelLogs = JSON.parse(report.fuel_logs || '[]');
-
-                detailModalTitle.textContent = `Laporan ${sanitizeHTML(report.nama_operator).toUpperCase()}`;
-                detailModalInfo.innerHTML = `${formatDate(report.tanggal, true)} | Shift: ${sanitizeHTML(report.shift)}`;
-                
-                let contentHTML = `
-                    <div class="bg-slate-100 p-3 rounded-lg">
-                        <h4 class="font-bold mb-2">Ringkasan</h4>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <p><strong>Unit:</strong> ${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p>
-                            <p><strong>Jam Kerja:</strong> ${(report.jam_kerja || 0).toFixed(2)} jam</p>
-                            <p><strong>HM:</strong> ${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p>
-                            <p><strong>KM:</strong> ${sanitizeHTML(report.km_awal_start)} - ${sanitizeHTML(report.km_akhir)}</p>
-                        </div>
-                    </div>
-                `;
-
-                contentHTML += `
-                    <div class="mt-4">
-                        <h4 class="font-bold mb-2">Log Ritase</h4>
-                        <div class="overflow-x-auto bg-slate-100 p-2 rounded-lg max-h-48">
-                            <table class="w-full text-sm">
-                                <thead class="bg-slate-200"><tr><th class="p-2 font-semibold text-left w-1/4">Waktu</th><th class="p-2 font-semibold text-left">Menit Tercatat</th></tr></thead>
-                                <tbody>${renderRitaseTable(ritaseData, report.shift)}</tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-
-                if (fuelLogs && fuelLogs.length > 0) {
-                    contentHTML += `
-                        <div class="mt-4">
-                            <h4 class="font-bold mb-2">Log Pengisian Fuel</h4>
-                             <div class="overflow-x-auto bg-slate-100 p-2 rounded-lg max-h-48">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-200"><tr><th class="p-2 font-semibold text-left">HM</th><th class="p-2 font-semibold text-left">Liter</th></tr></thead>
-                                    <tbody>
-                                        ${fuelLogs.map(log => `<tr><td class="p-2 border-t border-slate-200">${log.hm}</td><td class="p-2 border-t border-slate-200">${log.liter} L</td></tr>`).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
+                const allRitaseTimestamps = [];
+                for (const hourKey in ritaseData) {
+                    const hour = parseInt(hourKey.split(':')[0]);
+                    ritaseData[hourKey].forEach(minute => {
+                        const timestamp = new Date(report.tanggal);
+                        timestamp.setUTCHours(hour, minute, 0, 0);
+                        if (report.shift === 'Malam' && hour < 7) timestamp.setUTCDate(timestamp.getUTCDate() + 1);
+                        allRitaseTimestamps.push(timestamp);
+                    });
                 }
-                
-                if (report.note) {
-                    contentHTML += `
-                        <div class="mt-4">
-                            <h4 class="font-bold mb-2">Catatan</h4>
-                            <p class="text-sm bg-slate-100 p-3 rounded-lg">${sanitizeHTML(report.note)}</p>
-                        </div>
-                    `;
-                }
+                if (allRitaseTimestamps.length < 2) return { totalHours: 0, lostTimeHours: 0, lostTimeIntervals: [], fastestCycleMinutes: 0 };
+                allRitaseTimestamps.sort((a, b) => a - b);
+                let totalWorkMinutes = 0;
+                let lostTimeMinutes = 0;
+                let lostTimeIntervals = [];
+                let fastestCycleMinutes = Infinity;
 
-                detailModalContent.innerHTML = contentHTML;
-                detailModal.classList.replace('hidden', 'flex');
-            }
-            
-            function renderRitaseTable(ritaseData, shift) {
-                const hourKeys = Object.keys(ritaseData).sort(sortRitaseHours(shift));
-                let tableHTML = '';
-                hourKeys.forEach(hourKey => {
-                    const ritaseEntries = ritaseData[hourKey] || [];
-                    const minutesText = ritaseEntries.length > 0
-                        ? ritaseEntries.map(m => String(m).padStart(2, '0')).sort((a, b) => a - b).join(', ')
-                        : '<span class="text-slate-400">-</span>';
-                    tableHTML += `
-                        <tr class="border-t border-slate-200">
-                            <td class="p-2 font-medium">${hourKey}</td>
-                            <td class="p-2">${minutesText}</td>
-                        </tr>
-                    `;
-                });
-                return tableHTML;
-            }
-
-            function sortRitaseHours(shift) {
-                return (a, b) => {
-                    let hourA = parseInt(a.split(':')[0]);
-                    let hourB = parseInt(b.split(':')[0]);
-                    if (shift === 'Malam') {
-                        if (hourA < 7) hourA += 24;
-                        if (hourB < 7) hourB += 24;
+                for (let i = 0; i < allRitaseTimestamps.length - 1; i++) {
+                    let t1 = new Date(allRitaseTimestamps[i]);
+                    let t2 = new Date(allRitaseTimestamps[i+1]);
+                    const breakStartHour = report.shift === 'Malam' ? 0 : 12;
+                    let breakStart = new Date(t1);
+                    breakStart.setUTCHours(breakStartHour, 0, 0, 0);
+                    if (report.shift === 'Malam' && breakStartHour === 0 && t1.getUTCHours() > 7) { breakStart.setUTCDate(breakStart.getUTCDate() + 1); }
+                    let breakEnd = new Date(breakStart.getTime() + 60 * 60 * 1000);
+                    const overlapStart = Math.max(t1.getTime(), breakStart.getTime());
+                    const overlapEnd = Math.min(t2.getTime(), breakEnd.getTime());
+                    let breakDeduction = 0;
+                    if (overlapEnd > overlapStart) { breakDeduction = (overlapEnd - overlapStart) / 60000; }
+                    let gapMinutes = (t2 - t1) / 60000;
+                    let adjustedGap = gapMinutes - breakDeduction;
+                    if (adjustedGap <= 30) { 
+                        totalWorkMinutes += adjustedGap;
+                        if (adjustedGap > 0 && adjustedGap < fastestCycleMinutes) {
+                            fastestCycleMinutes = adjustedGap;
+                        }
+                    } else {
+                        lostTimeMinutes += adjustedGap;
+                        lostTimeIntervals.push({ start: formatTime(t1), end: formatTime(t2), duration: adjustedGap });
                     }
-                    return hourA - hourB;
+                }
+                return { 
+                    totalHours: totalWorkMinutes / 60, 
+                    lostTimeHours: lostTimeMinutes / 60, 
+                    lostTimeIntervals: lostTimeIntervals,
+                    fastestCycleMinutes: fastestCycleMinutes === Infinity ? 0 : fastestCycleMinutes
                 };
             }
-
-            function closeModal() {
-                detailModal.classList.replace('flex', 'hidden');
-            }
             
-            function exportDailySummaryToPdf() {
-                if (currentReports.length === 0) {
-                    alert('Tidak ada data untuk diexport.');
-                    return;
+            function getFilteredReports() {
+                if (appState.activeShift === 'semua') {
+                    return appState.reports;
                 }
+                return appState.reports.filter(report => report.shift === appState.activeShift);
+            }
+
+            // --- Logika Data Fetching ---
+            async function fetchDataForDate(date) {
+                appState.verifiedStatus = {};
+                switchPage(appState.activePage, true);
+                const { data, error } = await _supabase.from('reports').select('*').eq('tanggal', date);
+                globalLoadingState.classList.add('hidden');
+                if (error) { console.error("Error fetching data:", error); appState.reports = []; } 
+                else { appState.reports = data || []; }
+                appState.currentDate = date;
+                pages[appState.activePage].classList.remove('hidden');
+                renderCurrentPage();
+            }
+
+            // --- Logika Rendering Utama ---
+            function renderCurrentPage() {
+                const filteredReports = getFilteredReports();
+                const hasReports = filteredReports.length > 0;
+                globalEmptyState.classList.toggle('hidden', !hasReports);
+                const activeContent = pages[appState.activePage].querySelector('[id$="-content"], [id$="-container"]');
+                if (activeContent) {
+                    activeContent.classList.toggle('hidden', !hasReports);
+                }
+                if (!hasReports && appState.activePage === 'laporanDetail') {
+                    detailReportsContainer.classList.add('hidden');
+                }
+                if (!hasReports) return;
+                if (appState.activePage === 'ringkasan') renderRingkasanPage();
+                else if (appState.activePage === 'laporanDetail') renderDetailPage();
+                else if (appState.activePage === 'analitik') renderAnalitikPage();
+            }
+
+            // --- Render Halaman Ringkasan ---
+            function renderRingkasanPage() {
+                const filteredReports = getFilteredReports();
+                let totalOb = 0, totalCoal = 0, operatingEmployees = 0;
+                summaryCardsContainer.innerHTML = '';
                 
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                const pageW = doc.internal.pageSize.getWidth();
-                const margin = 14;
-                const reportDate = formatDate(dateFilter.value, true);
-
-                // Header
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(16);
-                doc.text('Ringkasan Laporan Harian', pageW / 2, 20, { align: 'center' });
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'normal');
-                doc.text(reportDate, pageW / 2, 28, { align: 'center' });
-
-                // Summary Table
-                const head = [['Nama Karyawan', 'Unit', 'Shift', 'Muatan', 'Jam Kerja', 'Total Ritase']];
-                const body = currentReports.map(report => {
-                    const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).reduce((sum, arr) => sum + arr.length, 0);
-                    return [
-                        report.nama_operator.toUpperCase(),
-                        `${report.unit_type} ${report.unit_id}`,
-                        report.shift,
-                        report.jenis_muatan,
-                        (report.jam_kerja || 0).toFixed(2),
-                        ritaseCount
-                    ];
+                filteredReports.forEach(report => {
+                    const workHoursData = calculateWorkHoursV2(report);
+                    if (workHoursData.totalHours > 0) operatingEmployees++;
+                    const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).flat().length;
+                    const reportTotalHM = (Number(report.hm_akhir) || 0) - (Number(report.hm_awal_start) || 0);
+                    const fastestCycleText = workHoursData.fastestCycleMinutes > 0 ? `${workHoursData.fastestCycleMinutes.toFixed(0)} m` : '-';
+                    
+                    if (report.jenis_muatan === 'OB') totalOb += ritaseCount; else totalCoal += ritaseCount;
+                    
+                    summaryCardsContainer.innerHTML += `
+                        <div class="summary-card p-4 fade-in">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-gray-800">${sanitizeHTML(report.nama_operator).toUpperCase()}</p>
+                                    <p class="text-sm text-gray-500">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p>
+                                </div>
+                                <div class="flex flex-col items-end gap-2">
+                                    <span class="text-xs font-bold px-3 py-1 rounded-full ${report.shift === 'Malam' ? 'bg-indigo-100 text-indigo-700' : 'bg-yellow-100 text-yellow-700'}">${sanitizeHTML(report.shift)}</span>
+                                    <span class="text-xs font-bold px-3 py-1 rounded-full ${report.jenis_muatan === 'COAL' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'}">${sanitizeHTML(report.jenis_muatan)}</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center mt-3 pt-3 border-t border-gray-100">
+                                <div>
+                                    <p class="text-xs text-gray-500">Jam Kerja</p>
+                                    <p class="font-bold text-lg">${workHoursData.totalHours.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Ritase</p>
+                                    <p class="font-bold text-lg">${ritaseCount}</p>
+                                    <!-- [UPDATE] Menambahkan cycle time tercepat -->
+                                    <p class="text-xs text-gray-400 -mt-1">Cycle Time: ${fastestCycleText}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Total HM</p>
+                                    <p class="font-bold text-lg">${reportTotalHM.toFixed(2)}</p>
+                                    <p class="text-xs text-gray-400 -mt-1">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p>
+                                </div>
+                            </div>
+                        </div>`;
                 });
 
-                doc.autoTable({
-                    head: head,
-                    body: body,
-                    startY: 40,
-                    theme: 'striped',
-                    headStyles: { fillColor: '#0d9488', textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 9 },
-                    columnStyles: {
-                        4: { halign: 'right' },
-                        5: { halign: 'right' },
+                totalKaryawanEl.textContent = filteredReports.length;
+                totalRitaseObEl.textContent = totalOb;
+                totalRitaseCoalEl.textContent = totalCoal;
+                operatingKaryawanEl.textContent = operatingEmployees;
+            }
+
+            // --- Render Halaman Detail ---
+            function renderDetailPage() {
+                dayUnverifiedContainer.innerHTML = '';
+                dayVerifiedContainer.innerHTML = '';
+                nightUnverifiedContainer.innerHTML = '';
+                nightVerifiedContainer.innerHTML = '';
+
+                const filteredReports = getFilteredReports();
+
+                filteredReports.forEach(report => {
+                    const workHoursData = calculateWorkHoursV2(report);
+                    const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).flat().length;
+                    const fuelLogs = JSON.parse(report.fuel_logs || '[]');
+                    const totalFuel = fuelLogs.reduce((sum, log) => sum + (Number(log.liter) || 0), 0);
+                    const lastFuelHM = fuelLogs.length > 0 ? fuelLogs[fuelLogs.length - 1].hm : '-';
+                    const totalHM = (Number(report.hm_akhir) || 0) - (Number(report.hm_awal_start) || 0);
+                    const totalKM = (Number(report.km_akhir) || 0) - (Number(report.km_awal_start) || 0);
+                    const fastestCycleText = workHoursData.fastestCycleMinutes > 0 ? `${workHoursData.fastestCycleMinutes.toFixed(0)} m` : '-';
+                    const isVerified = appState.verifiedStatus[report.id];
+
+                    // [UPDATE] Kartu detail dirombak total untuk memuat semua informasi baru
+                    const cardHTML = `
+                        <div class="detail-card ${isVerified ? 'verified' : ''} fade-in" data-report-id="${report.id}">
+                            <div class="p-4 space-y-3">
+                                <div class="flex justify-between items-start cursor-pointer card-header">
+                                    <div><p class="font-bold text-lg text-gray-800">${sanitizeHTML(report.nama_operator).toUpperCase()}</p><p class="text-sm text-gray-500">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p></div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <span class="text-xs font-bold px-3 py-1 rounded-full ${report.shift === 'Malam' ? 'bg-indigo-100 text-indigo-700' : 'bg-yellow-100 text-yellow-700'}">${sanitizeHTML(report.shift)}</span>
+                                        <span class="text-xs font-bold px-3 py-1 rounded-full ${report.jenis_muatan === 'COAL' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'}">${sanitizeHTML(report.jenis_muatan)}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm border-t border-gray-100 pt-3">
+                                    <div>
+                                        <p class="text-gray-500">Total HM</p>
+                                        <p class="font-bold text-blue-600">${totalHM.toFixed(2)}</p>
+                                        <p class="text-xs text-gray-400">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Total KM</p>
+                                        <p class="font-bold">${totalKM.toFixed(2)}</p>
+                                        <p class="text-xs text-gray-400">${sanitizeHTML(report.km_awal_start)} - ${sanitizeHTML(report.km_akhir)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Jam Kerja</p>
+                                        <p class="font-bold text-green-600">${workHoursData.totalHours.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Lost Time</p>
+                                        <p class="font-bold text-red-600">${workHoursData.lostTimeHours.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Total Ritase</p>
+                                        <p class="font-bold">${ritaseCount}</p>
+                                        <p class="text-xs text-gray-400">Cycle Time: ${fastestCycleText}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Fuel</p>
+                                        <p class="font-bold">${totalFuel} L <span class="text-gray-500 font-normal">HM/KM ${lastFuelHM}</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+                                <button class="verify-btn w-full py-2 rounded-lg font-bold transition-colors ${isVerified ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}"><i class="fa-solid ${isVerified ? 'fa-check-double' : 'fa-check'} mr-2"></i>${isVerified ? 'Terverifikasi' : 'Verifikasi Laporan'}</button>
+                            </div>
+                        </div>`;
+
+                    if (report.shift === 'Siang') {
+                        if (isVerified) dayVerifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                        else dayUnverifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                    } else if (report.shift === 'Malam') {
+                        if (isVerified) nightVerifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                        else nightUnverifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
                     }
                 });
                 
-                const finalY = doc.lastAutoTable.finalY;
-                
-                // Grand Total Section
-                const totalJam = currentReports.reduce((sum, r) => sum + (r.jam_kerja || 0), 0);
-                const totalKaryawan = currentReports.length;
-                const totalOb = currentReports.filter(r => r.jenis_muatan === 'OB').reduce((sum, r) => sum + Object.values(JSON.parse(r.ritase || '{}')).flat().length, 0);
-                const totalCoal = currentReports.filter(r => r.jenis_muatan === 'COAL').reduce((sum, r) => sum + Object.values(JSON.parse(r.ritase || '{}')).flat().length, 0);
-
-                doc.setFontSize(10);
-                doc.text('Total Keseluruhan:', margin, finalY + 10);
-                doc.autoTable({
-                    startY: finalY + 12,
-                    theme: 'plain',
-                    styles: { fontSize: 9 },
-                    body: [
-                        ['Total Jam Kerja', `${totalJam.toFixed(2)} Jam`],
-                        ['Total Karyawan Melapor', `${totalKaryawan} Orang`],
-                        ['Total Ritase OB', `${totalOb} Rit`],
-                        ['Total Ritase COAL', `${totalCoal} Rit`],
-                    ],
-                    columnStyles: { 1: { fontStyle: 'bold' } }
-                });
-
-                doc.save(`Laporan_Harian_${dateFilter.value}.pdf`);
+                dayShiftSection.style.display = dayUnverifiedContainer.hasChildNodes() || dayVerifiedContainer.hasChildNodes() ? 'block' : 'none';
+                nightShiftSection.style.display = nightUnverifiedContainer.hasChildNodes() || nightVerifiedContainer.hasChildNodes() ? 'block' : 'none';
+            }
+            
+            // --- Modal & Analitik ---
+            function showDetailModal(reportId) {
+                const report = appState.reports.find(r => r.id == reportId);
+                if (!report) return;
+                const workHoursData = calculateWorkHoursV2(report);
+                const ritaseData = JSON.parse(report.ritase || '{}');
+                detailModalTitle.textContent = `Laporan Ritase ${sanitizeHTML(report.nama_operator).toUpperCase()}`;
+                let ritaseHTML = renderRitaseTableForModal(ritaseData);
+                let lostTimeHTML = renderLostTimeTableForModal(workHoursData.lostTimeIntervals);
+                detailModalContent.innerHTML = `
+                    <div class="mt-4"><h4 class="font-bold mb-2 text-gray-700">Detail Ritase per Jam</h4><div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-sm">${ritaseHTML}</div></div>
+                    <div class="mt-4"><h4 class="font-bold mb-2 text-gray-700">Detail Lost Time (Jeda > 30 Menit)</h4><div class="space-y-2 text-sm">${lostTimeHTML}</div></div>`;
+                detailModal.classList.replace('hidden', 'flex');
             }
 
-            // --- Event Listeners ---
-            dateFilter.addEventListener('change', () => {
-                fetchAndDisplayReports(dateFilter.value);
-            });
+            function renderRitaseTableForModal(ritaseData) {
+                const hourKeys = Object.keys(ritaseData).sort((a,b) => parseInt(a) - parseInt(b));
+                if (hourKeys.length === 0) return '<p class="text-center text-sm text-gray-500 col-span-full">Tidak ada data ritase.</p>';
+                return hourKeys.map(hour => `<div class="bg-gray-100 p-2 rounded-md border border-gray-200"><p class="font-bold text-gray-800">${hour}:00</p><p class="text-xs text-gray-600 break-words">${ritaseData[hour].sort((a,b) => a - b).join(', ')}</p></div>`).join('');
+            }
             
-            exportDailyPdfBtn.addEventListener('click', exportDailySummaryToPdf);
-            closeDetailModalBtn.addEventListener('click', closeModal);
-            closeDetailModalBtn2.addEventListener('click', closeModal);
+            function renderLostTimeTableForModal(lostTimeIntervals) {
+                if (lostTimeIntervals.length === 0) return '<p class="text-sm text-gray-500">Tidak ada lost time yang tercatat.</p>';
+                return lostTimeIntervals.map(interval => `
+                    <div class="bg-red-50 p-2 rounded-md border border-red-200 flex justify-between items-center">
+                        <p class="text-gray-800"><i class="fa-regular fa-clock mr-2"></i>Jeda dari <span class="font-bold">${interval.start}</span> sampai <span class="font-bold">${interval.end}</span></p>
+                        <p class="font-bold text-red-600">${interval.duration.toFixed(0)} m</p>
+                    </div>`).join('');
+            }
 
-            // --- Initial Load ---
+            let ritaseChart, leaderboardChart;
+            function renderAnalitikPage() {
+                const filteredReports = getFilteredReports();
+                const totalOb = filteredReports.filter(r => r.jenis_muatan === 'OB').reduce((sum, r) => sum + Object.values(JSON.parse(r.ritase || '{}')).flat().length, 0);
+                const totalCoal = filteredReports.filter(r => r.jenis_muatan === 'COAL').reduce((sum, r) => sum + Object.values(JSON.parse(r.ritase || '{}')).flat().length, 0);
+                if (ritaseChart) ritaseChart.destroy();
+                ritaseChart = new Chart(el('#ritaseComparisonChart').getContext('2d'), { type: 'doughnut', data: { labels: ['OB', 'COAL'], datasets: [{ data: [totalOb, totalCoal], backgroundColor: ['#fb923c', '#475569'] }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } });
+                const productivityData = filteredReports.map(r => { 
+                    const workHoursData = calculateWorkHoursV2(r); 
+                    const ritaseCount = Object.values(JSON.parse(r.ritase || '{}')).flat().length; 
+                    return { name: (r.nama_operator || '').toUpperCase(), productivity: workHoursData.totalHours > 0 ? (ritaseCount / workHoursData.totalHours) : 0 }; 
+                }).sort((a, b) => b.productivity - a.productivity).slice(0, 5);
+                if (leaderboardChart) leaderboardChart.destroy();
+                leaderboardChart = new Chart(el('#productivityLeaderboardChart').getContext('2d'), { type: 'bar', data: { labels: productivityData.map(d => d.name), datasets: [{ label: 'Rit/Jam', data: productivityData.map(d => d.productivity), backgroundColor: '#4318ff' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+            }
+
+            // --- Navigasi & Inisialisasi ---
+            function switchPage(targetPageId, isLoading = false) {
+                appState.activePage = targetPageId;
+                pageTitle.textContent = navLinks[targetPageId].querySelector('span').textContent;
+                Object.values(pages).forEach(page => page.classList.add('hidden'));
+                Object.values(navLinks).forEach(link => link.classList.remove('active'));
+                navLinks[targetPageId].classList.add('active');
+                globalEmptyState.classList.add('hidden');
+                if (isLoading) { globalLoadingState.classList.remove('hidden'); } 
+                else { 
+                    pages[targetPageId].classList.remove('hidden'); 
+                    renderCurrentPage(); 
+                }
+            }
+            
+            function handleDateChange(e) {
+                fetchDataForDate(e.target.value);
+            }
+
+            function handleShiftChange(e) {
+                appState.activeShift = e.target.value;
+                renderCurrentPage();
+            }
+
             function initialize() {
                 const today = new Date();
                 today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-                dateFilter.value = today.toISOString().slice(0, 10);
-                fetchAndDisplayReports(dateFilter.value);
+                const todayStr = today.toISOString().slice(0, 10);
+                dateFilter.value = todayStr;
+                supportLink.href = `https://wa.me/6285198036056?text=${encodeURIComponent('Halo, saya butuh bantuan dengan Dasbor Admin.')}`;
+                
+                navLinks.ringkasan.addEventListener('click', () => switchPage('ringkasan'));
+                navLinks.laporanDetail.addEventListener('click', () => switchPage('laporanDetail'));
+                navLinks.analitik.addEventListener('click', () => switchPage('analitik'));
+                
+                dateFilter.addEventListener('change', handleDateChange);
+                shiftFilter.addEventListener('change', handleShiftChange);
+                
+                detailReportsContainer.addEventListener('click', (e) => {
+                    const card = e.target.closest('.detail-card');
+                    if (!card) return;
+                    const reportId = card.dataset.reportId;
+                    if (e.target.closest('.card-header')) showDetailModal(reportId);
+                    if (e.target.closest('.verify-btn')) {
+                        appState.verifiedStatus[reportId] = !appState.verifiedStatus[reportId];
+                        renderDetailPage();
+                    }
+                });
+                
+                const closeModal = () => detailModal.classList.replace('flex', 'hidden');
+                closeDetailModalBtn.addEventListener('click', closeModal);
+                closeDetailModalBtn2.addEventListener('click', closeModal);
+                
+                const closeSidebar = () => { sidebar.classList.add('-translate-x-full'); sidebarBackdrop.classList.add('hidden'); };
+                openSidebarBtn.addEventListener('click', () => { sidebar.classList.remove('-translate-x-full'); sidebarBackdrop.classList.remove('hidden'); });
+                closeSidebarBtn.addEventListener('click', closeSidebar);
+                sidebarBackdrop.addEventListener('click', closeSidebar);
+                
+                fetchDataForDate(todayStr);
             }
 
             initialize();
