@@ -30,6 +30,21 @@
         .modal-bg { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        
+        /* Status Bar */
+        #status-bar {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            color: #6b7280;
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            border-top-left-radius: 0.5rem;
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
     </style>
 </head>
 <body class="flex min-h-screen">
@@ -121,6 +136,12 @@
         </main>
     </div>
 
+    <!-- Status Bar -->
+    <div id="status-bar" class="hidden">
+        <span id="status-text">Siap</span>
+        <span id="status-time" class="ml-2"></span>
+    </div>
+
     <!-- Detail Modal (Shared) -->
     <div id="detail-modal" class="fixed inset-0 modal-bg items-center justify-center hidden z-50 p-4 overflow-y-auto">
         <div class="bg-white p-6 w-full max-w-2xl m-auto fade-in rounded-2xl shadow-2xl">
@@ -134,8 +155,20 @@
         // --- Inisialisasi Supabase ---
         const SUPABASE_URL = 'https://hwajcditsdmebqmflqsm.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3YWpjZGl0c2RtZWJxbWZscXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0OTMzOTEsImV4cCI6MjA2OTA2OTM5MX0.Puq5NWeNHdtHlE8bem4QUqvIcHVyqR_AR5IlpiG-hz8';
+        
+        // Inisialisasi Supabase dengan penanganan error
         let _supabase;
-        try { _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) { document.body.innerHTML = `<h1>Konfigurasi Supabase Diperlukan</h1>`; }
+        try {
+            _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.error("Error initializing Supabase:", e);
+            document.body.innerHTML = `<div class="p-10 text-center">
+                <h1 class="text-2xl font-bold text-red-600">Kesalahan Konfigurasi</h1>
+                <p class="mt-4">Terjadi kesalahan dalam menghubungkan ke database. Silakan coba lagi nanti.</p>
+                <button onclick="location.reload()" class="mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg">Muat Ulang Halaman</button>
+            </div>`;
+            throw e;
+        }
         
         // --- State Aplikasi ---
         const appState = {
@@ -179,12 +212,35 @@
             const sidebarBackdrop = el('#sidebar-backdrop');
             const openSidebarBtn = el('#open-sidebar-btn');
             const closeSidebarBtn = el('#close-sidebar-btn');
+            
+            // Elemen status bar baru
+            const statusBar = el('#status-bar');
+            const statusText = el('#status-text');
+            const statusTime = el('#status-time');
 
             // --- Fungsi Utilitas ---
             const sanitizeHTML = (str) => { const t = document.createElement('div'); t.textContent = str || ''; return t.innerHTML; };
             const formatTime = (date) => date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+            
+            // Fungsi untuk update status bar
+            function updateStatus(message, isError = false) {
+                statusText.textContent = message;
+                statusTime.textContent = new Date().toLocaleTimeString('id-ID', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                if (isError) {
+                    statusText.classList.add('text-red-500');
+                } else {
+                    statusText.classList.remove('text-red-500');
+                }
+                
+                statusBar.classList.remove('hidden');
+            }
 
-            // --- Logika Kalkulasi (Tidak berubah) ---
+            // --- Logika Kalkulasi ---
             function calculateWorkHoursV2(report) {
                 const ritaseData = JSON.parse(report.ritase || '{}');
                 const allRitaseTimestamps = [];
@@ -199,10 +255,14 @@
                 }
                 if (allRitaseTimestamps.length < 2) return { totalHours: 0, lostTimeHours: 0, lostTimeIntervals: [], fastestCycleMinutes: 0 };
                 allRitaseTimestamps.sort((a, b) => a - b);
-                let totalWorkMinutes = 0, lostTimeMinutes = 0, fastestCycleMinutes = Infinity;
+                let totalWorkMinutes = 0;
+                let lostTimeMinutes = 0;
                 let lostTimeIntervals = [];
+                let fastestCycleMinutes = Infinity;
+
                 for (let i = 0; i < allRitaseTimestamps.length - 1; i++) {
-                    let t1 = new Date(allRitaseTimestamps[i]), t2 = new Date(allRitaseTimestamps[i+1]);
+                    let t1 = new Date(allRitaseTimestamps[i]);
+                    let t2 = new Date(allRitaseTimestamps[i+1]);
                     const breakStartHour = report.shift === 'Malam' ? 0 : 12;
                     let breakStart = new Date(t1);
                     breakStart.setUTCHours(breakStartHour, 0, 0, 0);
@@ -210,91 +270,175 @@
                     let breakEnd = new Date(breakStart.getTime() + 60 * 60 * 1000);
                     const overlapStart = Math.max(t1.getTime(), breakStart.getTime());
                     const overlapEnd = Math.min(t2.getTime(), breakEnd.getTime());
-                    let breakDeduction = (overlapEnd > overlapStart) ? (overlapEnd - overlapStart) / 60000 : 0;
-                    let adjustedGap = ((t2 - t1) / 60000) - breakDeduction;
+                    let breakDeduction = 0;
+                    if (overlapEnd > overlapStart) { breakDeduction = (overlapEnd - overlapStart) / 60000; }
+                    let gapMinutes = (t2 - t1) / 60000;
+                    let adjustedGap = gapMinutes - breakDeduction;
                     if (adjustedGap <= 30) { 
                         totalWorkMinutes += adjustedGap;
-                        if (adjustedGap > 0 && adjustedGap < fastestCycleMinutes) fastestCycleMinutes = adjustedGap;
+                        if (adjustedGap > 0 && adjustedGap < fastestCycleMinutes) {
+                            fastestCycleMinutes = adjustedGap;
+                        }
                     } else {
                         lostTimeMinutes += adjustedGap;
                         lostTimeIntervals.push({ start: formatTime(t1), end: formatTime(t2), duration: adjustedGap });
                     }
                 }
-                return { totalHours: totalWorkMinutes / 60, lostTimeHours: lostTimeMinutes / 60, lostTimeIntervals, fastestCycleMinutes: fastestCycleMinutes === Infinity ? 0 : fastestCycleMinutes };
+                return { 
+                    totalHours: totalWorkMinutes / 60, 
+                    lostTimeHours: lostTimeMinutes / 60, 
+                    lostTimeIntervals: lostTimeIntervals,
+                    fastestCycleMinutes: fastestCycleMinutes === Infinity ? 0 : fastestCycleMinutes
+                };
             }
             
-            const getFilteredReports = () => (appState.activeShift === 'semua') ? appState.reports : appState.reports.filter(r => r.shift === appState.activeShift);
-
-            // --- [PERBAIKAN] Logika Data Fetching Disederhanakan ---
-            // Fungsi ini sekarang hanya mengambil data sekali dari server setiap kali dipanggil.
-            // Ini akan memastikan data selalu baru saat halaman di-refresh atau tanggal diubah.
-            async function fetchDataForDate(date) {
-                switchPage(appState.activePage, true); // Tampilkan loading
-
-                // Ambil data terbaru dari Supabase.
-                const { data, error } = await _supabase
-                    .from('reports')
-                    .select('*')
-                    .eq('tanggal', date);
-
-                globalLoadingState.classList.add('hidden'); // Sembunyikan loading
-
-                if (error) {
-                    console.error("Gagal mengambil data:", error);
-                    appState.reports = [];
-                } else {
-                    appState.reports = data || [];
+            function getFilteredReports() {
+                if (appState.activeShift === 'semua') {
+                    return appState.reports;
                 }
-                
-                appState.currentDate = date;
-                pages[appState.activePage].classList.remove('hidden');
-                renderCurrentPage(); // Tampilkan data yang baru diambil
+                return appState.reports.filter(report => report.shift === appState.activeShift);
             }
 
-            // --- Logika Rendering (Tidak ada perubahan di sini) ---
+            // --- Logika Data Fetching ---
+            async function fetchDataForDate(date) {
+                try {
+                    // Tampilkan loading state
+                    globalLoadingState.classList.remove('hidden');
+                    updateStatus('Memuat data dari Supabase...');
+                    
+                    // Reset state
+                    appState.verifiedStatus = {};
+                    appState.reports = [];
+                    
+                    // Fetch data dari Supabase
+                    const { data, error } = await _supabase
+                        .from('reports')
+                        .select('*')
+                        .eq('tanggal', date)
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    appState.reports = data || [];
+                    appState.currentDate = date;
+                    
+                    // Muat status verifikasi dari localStorage
+                    if (data && data.length > 0) {
+                        updateStatus('Memuat status verifikasi...');
+                        const savedStatus = JSON.parse(localStorage.getItem('verifiedStatus') || '{}');
+                        data.forEach(report => {
+                            appState.verifiedStatus[report.id] = savedStatus[report.id] || false;
+                        });
+                    }
+                    
+                    updateStatus(`Data berhasil dimuat (${data?.length || 0} laporan)`);
+                    
+                } catch (error) {
+                    console.error("Error fetching data:", error);
+                    updateStatus(`Error: ${error.message}`, true);
+                    alert("Terjadi kesalahan saat memuat data. Silakan coba lagi.");
+                } finally {
+                    // Sembunyikan loading state
+                    globalLoadingState.classList.add('hidden');
+                    
+                    // Render halaman aktif
+                    pages[appState.activePage].classList.remove('hidden');
+                    renderCurrentPage();
+                }
+            }
+
+            // --- Fungsi untuk menyimpan status verifikasi ---
+            function saveVerifiedStatus() {
+                updateStatus('Menyimpan status verifikasi...');
+                localStorage.setItem('verifiedStatus', JSON.stringify(appState.verifiedStatus));
+                updateStatus('Status verifikasi tersimpan');
+            }
+
+            // --- Logika Rendering Utama ---
             function renderCurrentPage() {
                 const filteredReports = getFilteredReports();
                 const hasReports = filteredReports.length > 0;
-                globalEmptyState.classList.toggle('hidden', !hasReports);
+                globalEmptyState.classList.toggle('hidden', hasReports);
                 const activeContent = pages[appState.activePage].querySelector('[id$="-content"], [id$="-container"]');
-                if (activeContent) activeContent.classList.toggle('hidden', !hasReports);
+                if (activeContent) {
+                    activeContent.classList.toggle('hidden', !hasReports);
+                }
+                if (!hasReports && appState.activePage === 'laporanDetail') {
+                    detailReportsContainer.classList.add('hidden');
+                }
+                if (!hasReports) return;
                 
-                if (!hasReports) {
-                    if (appState.activePage === 'laporanDetail') {
-                        dayUnverifiedContainer.innerHTML = ''; dayVerifiedContainer.innerHTML = '';
-                        nightUnverifiedContainer.innerHTML = ''; nightVerifiedContainer.innerHTML = '';
-                    }
-                    return;
-                };
-
+                updateStatus(`Merender halaman ${appState.activePage}...`);
+                
                 if (appState.activePage === 'ringkasan') renderRingkasanPage();
                 else if (appState.activePage === 'laporanDetail') renderDetailPage();
                 else if (appState.activePage === 'analitik') renderAnalitikPage();
+                
+                updateStatus('Siap');
             }
 
+            // --- Render Halaman Ringkasan ---
             function renderRingkasanPage() {
                 const filteredReports = getFilteredReports();
                 let totalOb = 0, totalCoal = 0, operatingEmployees = 0;
                 summaryCardsContainer.innerHTML = '';
+                
                 filteredReports.forEach(report => {
                     const workHoursData = calculateWorkHoursV2(report);
                     if (workHoursData.totalHours > 0) operatingEmployees++;
                     const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).flat().length;
                     const reportTotalHM = (Number(report.hm_akhir) || 0) - (Number(report.hm_awal_start) || 0);
                     const fastestCycleText = workHoursData.fastestCycleMinutes > 0 ? `${workHoursData.fastestCycleMinutes.toFixed(0)} m` : '-';
+                    
                     if (report.jenis_muatan === 'OB') totalOb += ritaseCount; else totalCoal += ritaseCount;
-                    summaryCardsContainer.innerHTML += `<div class="summary-card p-4 fade-in"><div class="flex justify-between items-start"><div><p class="font-bold text-gray-800">${sanitizeHTML(report.nama_operator).toUpperCase()}</p><p class="text-sm text-gray-500">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p></div><div class="flex flex-col items-end gap-2"><span class="text-xs font-bold px-3 py-1 rounded-full ${report.shift === 'Malam' ? 'bg-indigo-100 text-indigo-700' : 'bg-yellow-100 text-yellow-700'}">${sanitizeHTML(report.shift)}</span><span class="text-xs font-bold px-3 py-1 rounded-full ${report.jenis_muatan === 'COAL' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'}">${sanitizeHTML(report.jenis_muatan)}</span></div></div><div class="grid grid-cols-3 gap-2 text-center mt-3 pt-3 border-t border-gray-100"><div><p class="text-xs text-gray-500">Jam Kerja</p><p class="font-bold text-lg">${workHoursData.totalHours.toFixed(2)}</p></div><div><p class="text-xs text-gray-500">Ritase</p><p class="font-bold text-lg">${ritaseCount}</p><p class="text-xs text-gray-400 -mt-1">Cycle Time: ${fastestCycleText}</p></div><div><p class="text-xs text-gray-500">Total HM</p><p class="font-bold text-lg">${reportTotalHM.toFixed(2)}</p><p class="text-xs text-gray-400 -mt-1">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p></div></div></div>`;
+                    
+                    summaryCardsContainer.innerHTML += `
+                        <div class="summary-card p-4 fade-in">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-gray-800">${sanitizeHTML(report.nama_operator).toUpperCase()}</p>
+                                    <p class="text-sm text-gray-500">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p>
+                                </div>
+                                <div class="flex flex-col items-end gap-2">
+                                    <span class="text-xs font-bold px-3 py-1 rounded-full ${report.shift === 'Malam' ? 'bg-indigo-100 text-indigo-700' : 'bg-yellow-100 text-yellow-700'}">${sanitizeHTML(report.shift)}</span>
+                                    <span class="text-xs font-bold px-3 py-1 rounded-full ${report.jenis_muatan === 'COAL' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'}">${sanitizeHTML(report.jenis_muatan)}</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center mt-3 pt-3 border-t border-gray-100">
+                                <div>
+                                    <p class="text-xs text-gray-500">Jam Kerja</p>
+                                    <p class="font-bold text-lg">${workHoursData.totalHours.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Ritase</p>
+                                    <p class="font-bold text-lg">${ritaseCount}</p>
+                                    <!-- Menambahkan cycle time tercepat -->
+                                    <p class="text-xs text-gray-400 -mt-1">Cycle Time: ${fastestCycleText}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Total HM</p>
+                                    <p class="font-bold text-lg">${reportTotalHM.toFixed(2)}</p>
+                                    <p class="text-xs text-gray-400 -mt-1">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p>
+                                </div>
+                            </div>
+                        </div>`;
                 });
+
                 totalKaryawanEl.textContent = filteredReports.length;
                 totalRitaseObEl.textContent = totalOb;
                 totalRitaseCoalEl.textContent = totalCoal;
                 operatingKaryawanEl.textContent = operatingEmployees;
             }
 
+            // --- Render Halaman Detail ---
             function renderDetailPage() {
-                dayUnverifiedContainer.innerHTML = ''; dayVerifiedContainer.innerHTML = '';
-                nightUnverifiedContainer.innerHTML = ''; nightVerifiedContainer.innerHTML = '';
+                dayUnverifiedContainer.innerHTML = '';
+                dayVerifiedContainer.innerHTML = '';
+                nightUnverifiedContainer.innerHTML = '';
+                nightVerifiedContainer.innerHTML = '';
+
                 const filteredReports = getFilteredReports();
+
                 filteredReports.forEach(report => {
                     const workHoursData = calculateWorkHoursV2(report);
                     const ritaseCount = Object.values(JSON.parse(report.ritase || '{}')).flat().length;
@@ -305,36 +449,111 @@
                     const totalKM = (Number(report.km_akhir) || 0) - (Number(report.km_awal_start) || 0);
                     const fastestCycleText = workHoursData.fastestCycleMinutes > 0 ? `${workHoursData.fastestCycleMinutes.toFixed(0)} m` : '-';
                     const isVerified = appState.verifiedStatus[report.id];
-                    const cardHTML = `<div class="detail-card ${isVerified ? 'verified' : ''} fade-in" data-report-id="${report.id}"><div class="p-4 space-y-3"><div class="flex justify-between items-start cursor-pointer card-header"><div><p class="font-bold text-lg text-gray-800">${sanitizeHTML(report.nama_operator).toUpperCase()}</p><p class="text-sm text-gray-500">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p></div><div class="flex flex-col items-end gap-2"><span class="text-xs font-bold px-3 py-1 rounded-full ${report.shift === 'Malam' ? 'bg-indigo-100 text-indigo-700' : 'bg-yellow-100 text-yellow-700'}">${sanitizeHTML(report.shift)}</span><span class="text-xs font-bold px-3 py-1 rounded-full ${report.jenis_muatan === 'COAL' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'}">${sanitizeHTML(report.jenis_muatan)}</span></div></div><div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm border-t border-gray-100 pt-3"><div><p class="text-gray-500">Total HM</p><p class="font-bold text-blue-600">${totalHM.toFixed(2)}</p><p class="text-xs text-gray-400">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p></div><div><p class="text-gray-500">Total KM</p><p class="font-bold">${totalKM.toFixed(2)}</p><p class="text-xs text-gray-400">${sanitizeHTML(report.km_awal_start)} - ${sanitizeHTML(report.km_akhir)}</p></div><div><p class="text-gray-500">Jam Kerja</p><p class="font-bold text-green-600">${workHoursData.totalHours.toFixed(2)}</p></div><div><p class="text-gray-500">Lost Time</p><p class="font-bold text-red-600">${workHoursData.lostTimeHours.toFixed(2)}</p></div><div><p class="text-gray-500">Total Ritase</p><p class="font-bold">${ritaseCount}</p><p class="text-xs text-gray-400">Cycle Time: ${fastestCycleText}</p></div><div><p class="text-gray-500">Fuel</p><p class="font-bold">${totalFuel} L <span class="text-gray-500 font-normal">HM/KM ${lastFuelHM}</span></p></div></div></div><div class="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl"><button class="verify-btn w-full py-2 rounded-lg font-bold transition-colors ${isVerified ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}"><i class="fa-solid ${isVerified ? 'fa-check-double' : 'fa-check'} mr-2"></i>${isVerified ? 'Terverifikasi' : 'Verifikasi Laporan'}</button></div></div>`;
-                    const container = report.shift === 'Siang' ? (isVerified ? dayVerifiedContainer : dayUnverifiedContainer) : (isVerified ? nightVerifiedContainer : nightUnverifiedContainer);
-                    container.insertAdjacentHTML('beforeend', cardHTML);
+
+                    const cardHTML = `
+                        <div class="detail-card ${isVerified ? 'verified' : ''} fade-in" data-report-id="${report.id}">
+                            <div class="p-4 space-y-3">
+                                <div class="flex justify-between items-start cursor-pointer card-header">
+                                    <div><p class="font-bold text-lg text-gray-800">${sanitizeHTML(report.nama_operator).toUpperCase()}</p><p class="text-sm text-gray-500">${sanitizeHTML(report.unit_type)} ${sanitizeHTML(report.unit_id)}</p></div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <span class="text-xs font-bold px-3 py-1 rounded-full ${report.shift === 'Malam' ? 'bg-indigo-100 text-indigo-700' : 'bg-yellow-100 text-yellow-700'}">${sanitizeHTML(report.shift)}</span>
+                                        <span class="text-xs font-bold px-3 py-1 rounded-full ${report.jenis_muatan === 'COAL' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'}">${sanitizeHTML(report.jenis_muatan)}</span>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm border-t border-gray-100 pt-3">
+                                    <div>
+                                        <p class="text-gray-500">Total HM</p>
+                                        <p class="font-bold text-blue-600">${totalHM.toFixed(2)}</p>
+                                        <p class="text-xs text-gray-400">${sanitizeHTML(report.hm_awal_start)} - ${sanitizeHTML(report.hm_akhir)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Total KM</p>
+                                        <p class="font-bold">${totalKM.toFixed(2)}</p>
+                                        <p class="text-xs text-gray-400">${sanitizeHTML(report.km_awal_start)} - ${sanitizeHTML(report.km_akhir)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Jam Kerja</p>
+                                        <p class="font-bold text-green-600">${workHoursData.totalHours.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Lost Time</p>
+                                        <p class="font-bold text-red-600">${workHoursData.lostTimeHours.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Total Ritase</p>
+                                        <p class="font-bold">${ritaseCount}</p>
+                                        <p class="text-xs text-gray-400">Cycle Time: ${fastestCycleText}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">Fuel</p>
+                                        <p class="font-bold">${totalFuel} L <span class="text-gray-500 font-normal">HM/KM ${lastFuelHM}</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+                                <button class="verify-btn w-full py-2 rounded-lg font-bold transition-colors ${isVerified ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}"><i class="fa-solid ${isVerified ? 'fa-check-double' : 'fa-check'} mr-2"></i>${isVerified ? 'Terverifikasi' : 'Verifikasi Laporan'}</button>
+                            </div>
+                        </div>`;
+
+                    if (report.shift === 'Siang') {
+                        if (isVerified) dayVerifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                        else dayUnverifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                    } else if (report.shift === 'Malam') {
+                        if (isVerified) nightVerifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                        else nightUnverifiedContainer.insertAdjacentHTML('beforeend', cardHTML);
+                    }
                 });
+                
                 dayShiftSection.style.display = dayUnverifiedContainer.hasChildNodes() || dayVerifiedContainer.hasChildNodes() ? 'block' : 'none';
                 nightShiftSection.style.display = nightUnverifiedContainer.hasChildNodes() || nightVerifiedContainer.hasChildNodes() ? 'block' : 'none';
             }
             
+            // --- Modal & Analitik ---
             function showDetailModal(reportId) {
                 const report = appState.reports.find(r => r.id == reportId);
                 if (!report) return;
                 const workHoursData = calculateWorkHoursV2(report);
                 const ritaseData = JSON.parse(report.ritase || '{}');
                 detailModalTitle.textContent = `Laporan Ritase ${sanitizeHTML(report.nama_operator).toUpperCase()}`;
-                const renderRitase = (data) => Object.keys(data).length === 0 ? '<p class="text-center text-sm text-gray-500 col-span-full">Tidak ada data ritase.</p>' : Object.keys(data).sort((a,b)=>parseInt(a)-parseInt(b)).map(h=>`<div class="bg-gray-100 p-2 rounded-md border border-gray-200"><p class="font-bold text-gray-800">${h}:00</p><p class="text-xs text-gray-600 break-words">${data[h].sort((a,b)=>a-b).join(', ')}</p></div>`).join('');
-                const renderLostTime = (intervals) => intervals.length === 0 ? '<p class="text-sm text-gray-500">Tidak ada lost time.</p>' : intervals.map(i=>`<div class="bg-red-50 p-2 rounded-md border border-red-200 flex justify-between items-center"><p class="text-gray-800"><i class="fa-regular fa-clock mr-2"></i>Jeda dari <span class="font-bold">${i.start}</span> - <span class="font-bold">${i.end}</span></p><p class="font-bold text-red-600">${i.duration.toFixed(0)} m</p></div>`).join('');
-                detailModalContent.innerHTML = `<div class="mt-4"><h4 class="font-bold mb-2 text-gray-700">Detail Ritase</h4><div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-sm">${renderRitase(ritaseData)}</div></div><div class="mt-4"><h4 class="font-bold mb-2 text-gray-700">Detail Lost Time</h4><div class="space-y-2 text-sm">${renderLostTime(workHoursData.lostTimeIntervals)}</div></div>`;
+                let ritaseHTML = renderRitaseTableForModal(ritaseData);
+                let lostTimeHTML = renderLostTimeTableForModal(workHoursData.lostTimeIntervals);
+                detailModalContent.innerHTML = `
+                    <div class="mt-4"><h4 class="font-bold mb-2 text-gray-700">Detail Ritase per Jam</h4><div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-sm">${ritaseHTML}</div></div>
+                    <div class="mt-4"><h4 class="font-bold mb-2 text-gray-700">Detail Lost Time (Jeda > 30 Menit)</h4><div class="space-y-2 text-sm">${lostTimeHTML}</div></div>`;
                 detailModal.classList.replace('hidden', 'flex');
+            }
+
+            function renderRitaseTableForModal(ritaseData) {
+                const hourKeys = Object.keys(ritaseData).sort((a,b) => parseInt(a) - parseInt(b));
+                if (hourKeys.length === 0) return '<p class="text-center text-sm text-gray-500 col-span-full">Tidak ada data ritase.</p>';
+                return hourKeys.map(hour => `<div class="bg-gray-100 p-2 rounded-md border border-gray-200"><p class="font-bold text-gray-800">${hour}:00</p><p class="text-xs text-gray-600 break-words">${ritaseData[hour].sort((a,b) => a - b).join(', ')}</p></div>`).join('');
+            }
+            
+            function renderLostTimeTableForModal(lostTimeIntervals) {
+                if (lostTimeIntervals.length === 0) return '<p class="text-sm text-gray-500">Tidak ada lost time yang tercatat.</p>';
+                return lostTimeIntervals.map(interval => `
+                    <div class="bg-red-50 p-2 rounded-md border border-red-200 flex justify-between items-center">
+                        <p class="text-gray-800"><i class="fa-regular fa-clock mr-2"></i>Jeda dari <span class="font-bold">${interval.start}</span> sampai <span class="font-bold">${interval.end}</span></p>
+                        <p class="font-bold text-red-600">${interval.duration.toFixed(0)} m</p>
+                    </div>`).join('');
             }
 
             let ritaseChart, leaderboardChart;
             function renderAnalitikPage() {
+                updateStatus('Menyiapkan grafik analitik...');
                 const filteredReports = getFilteredReports();
                 const totalOb = filteredReports.filter(r => r.jenis_muatan === 'OB').reduce((sum, r) => sum + Object.values(JSON.parse(r.ritase || '{}')).flat().length, 0);
                 const totalCoal = filteredReports.filter(r => r.jenis_muatan === 'COAL').reduce((sum, r) => sum + Object.values(JSON.parse(r.ritase || '{}')).flat().length, 0);
                 if (ritaseChart) ritaseChart.destroy();
                 ritaseChart = new Chart(el('#ritaseComparisonChart').getContext('2d'), { type: 'doughnut', data: { labels: ['OB', 'COAL'], datasets: [{ data: [totalOb, totalCoal], backgroundColor: ['#fb923c', '#475569'] }] }, options: { responsive: true, plugins: { legend: { position: 'top' } } } });
-                const productivityData = filteredReports.map(r => { const workHoursData = calculateWorkHoursV2(r); const ritaseCount = Object.values(JSON.parse(r.ritase || '{}')).flat().length; return { name: (r.nama_operator || '').toUpperCase(), productivity: workHoursData.totalHours > 0 ? (ritaseCount / workHoursData.totalHours) : 0 }; }).sort((a, b) => b.productivity - a.productivity).slice(0, 5);
+                const productivityData = filteredReports.map(r => { 
+                    const workHoursData = calculateWorkHoursV2(r); 
+                    const ritaseCount = Object.values(JSON.parse(r.ritase || '{}')).flat().length; 
+                    return { name: (r.nama_operator || '').toUpperCase(), productivity: workHoursData.totalHours > 0 ? (ritaseCount / workHoursData.totalHours) : 0 }; 
+                }).sort((a, b) => b.productivity - a.productivity).slice(0, 5);
                 if (leaderboardChart) leaderboardChart.destroy();
                 leaderboardChart = new Chart(el('#productivityLeaderboardChart').getContext('2d'), { type: 'bar', data: { labels: productivityData.map(d => d.name), datasets: [{ label: 'Rit/Jam', data: productivityData.map(d => d.productivity), backgroundColor: '#4318ff' }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } } });
+                updateStatus('Grafik analitik siap');
             }
 
             // --- Navigasi & Inisialisasi ---
@@ -345,10 +564,27 @@
                 Object.values(navLinks).forEach(link => link.classList.remove('active'));
                 navLinks[targetPageId].classList.add('active');
                 globalEmptyState.classList.add('hidden');
-                if (isLoading) { globalLoadingState.classList.remove('hidden'); } 
-                else { pages[targetPageId].classList.remove('hidden'); renderCurrentPage(); }
+                if (isLoading) {
+                    globalLoadingState.classList.remove('hidden');
+                    updateStatus('Memuat halaman...');
+                } 
+                else { 
+                    pages[targetPageId].classList.remove('hidden'); 
+                    renderCurrentPage(); 
+                }
             }
             
+            function handleDateChange(e) {
+                updateStatus(`Memuat data untuk tanggal ${e.target.value}...`);
+                fetchDataForDate(e.target.value);
+            }
+
+            function handleShiftChange(e) {
+                updateStatus(`Memfilter shift ${e.target.value}...`);
+                appState.activeShift = e.target.value;
+                renderCurrentPage();
+            }
+
             function initialize() {
                 const today = new Date();
                 today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
@@ -356,20 +592,41 @@
                 dateFilter.value = todayStr;
                 supportLink.href = `https://wa.me/6285198036056?text=${encodeURIComponent('Halo, saya butuh bantuan dengan Dasbor Admin.')}`;
                 
+                // Muat status verifikasi dari localStorage
+                const savedStatus = localStorage.getItem('verifiedStatus');
+                if (savedStatus) {
+                    try {
+                        appState.verifiedStatus = JSON.parse(savedStatus);
+                    } catch (e) {
+                        console.error("Error parsing saved status:", e);
+                        appState.verifiedStatus = {};
+                    }
+                }
+                
                 navLinks.ringkasan.addEventListener('click', () => switchPage('ringkasan'));
                 navLinks.laporanDetail.addEventListener('click', () => switchPage('laporanDetail'));
                 navLinks.analitik.addEventListener('click', () => switchPage('analitik'));
                 
-                dateFilter.addEventListener('change', (e) => fetchDataForDate(e.target.value));
-                shiftFilter.addEventListener('change', (e) => { appState.activeShift = e.target.value; renderCurrentPage(); });
+                dateFilter.addEventListener('change', handleDateChange);
+                shiftFilter.addEventListener('change', handleShiftChange);
                 
                 detailReportsContainer.addEventListener('click', (e) => {
                     const card = e.target.closest('.detail-card');
                     if (!card) return;
                     const reportId = card.dataset.reportId;
-                    if (e.target.closest('.card-header')) showDetailModal(reportId);
-                    if (e.target.closest('.verify-btn')) {
-                        appState.verifiedStatus[reportId] = !appState.verifiedStatus[reportId];
+                    
+                    // Klik header untuk buka modal detail
+                    if (e.target.closest('.card-header')) {
+                        updateStatus(`Membuka detail laporan ${reportId}...`);
+                        showDetailModal(reportId);
+                    }
+                    
+                    // Klik tombol verifikasi
+                    if (e.target.classList.contains('verify-btn') || e.target.closest('.verify-btn')) {
+                        const isVerified = appState.verifiedStatus[reportId];
+                        updateStatus(`Mengubah status verifikasi laporan ${reportId}...`);
+                        appState.verifiedStatus[reportId] = !isVerified;
+                        saveVerifiedStatus();
                         renderDetailPage();
                     }
                 });
@@ -383,7 +640,9 @@
                 closeSidebarBtn.addEventListener('click', closeSidebar);
                 sidebarBackdrop.addEventListener('click', closeSidebar);
                 
-                // Panggil fungsi untuk mengambil data saat halaman pertama kali dimuat.
+                // Inisialisasi status bar
+                updateStatus('Aplikasi siap');
+                
                 fetchDataForDate(todayStr);
             }
 
