@@ -1,5 +1,6 @@
 // Nama cache unik untuk aplikasi Anda. Ubah jika ada perubahan besar pada file.
-const CACHE_NAME = 'timesheet-epm-cache-v1.3'; // Naikkan versi cache
+// Tingkatkan versi ini setiap kali Anda mengubah file yang di-cache.
+const CACHE_NAME = 'timesheet-epm-cache-v1.4'; // Versi cache baru
 
 // Dapatkan nama repository dari URL untuk path yang benar di GitHub Pages
 const repoName = new URL(self.location).pathname.split('/')[1] || '';
@@ -27,14 +28,12 @@ const urlsToCache = [
 
 // Event 'install': Dipicu saat service worker pertama kali diinstal.
 self.addEventListener('install', event => {
-  console.log('Service Worker: Menginstal...');
+  console.log('Service Worker: Menginstal versi baru...');
   // Menunggu hingga semua file inti berhasil di-cache.
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Service Worker: Membuka cache dan menambahkan file inti.');
-        // Skip waiting untuk mempercepat aktivasi service worker baru
-        self.skipWaiting(); 
         return cache.addAll(urlsToCache);
       })
       .catch(error => {
@@ -43,41 +42,15 @@ self.addEventListener('install', event => {
   );
 });
 
-// Event 'fetch': Dipicu setiap kali aplikasi meminta sebuah resource (file, gambar, dll).
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then(
-          networkResponse => {
-            return caches.open(CACHE_NAME).then(cache => {
-              if (networkResponse.status === 200) {
-                cache.put(event.request, networkResponse.clone());
-              }
-              return networkResponse;
-            });
-          }
-        ).catch(error => {
-            console.error('Service Worker: Gagal mengambil dari jaringan.', error);
-        });
-      })
-  );
-});
-
 // Event 'activate': Dipicu setelah instalasi selesai. Berguna untuk membersihkan cache lama.
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Mengaktifkan...');
+  console.log('Service Worker: Mengaktifkan versi baru dan membersihkan cache lama.');
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
+          // Hapus cache yang tidak ada dalam daftar putih (whitelist)
           if (cacheWhitelist.indexOf(cacheName) === -1) {
             console.log('Service Worker: Menghapus cache lama:', cacheName);
             return caches.delete(cacheName);
@@ -85,5 +58,43 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => self.clients.claim()) // Mengambil kontrol halaman yang terbuka
+  );
+});
+
+// Event 'fetch': Dipicu setiap kali aplikasi meminta sebuah resource (file, gambar, dll).
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  event.respondWith(
+    caches.match(event.request)
+      .then(cachedResponse => {
+        // Jika ada respons yang di-cache, kembalikan respons tersebut
+        if (cachedResponse) {
+          console.log('Service Worker: Mengambil dari cache untuk URL:', event.request.url);
+          return cachedResponse;
+        }
+
+        // Jika tidak ada di cache, coba ambil dari jaringan
+        return fetch(event.request).then(
+          networkResponse => {
+            console.log('Service Worker: Mengambil dari jaringan dan meng-cache untuk URL:', event.request.url);
+            // Tambahkan respons baru ke cache jika statusnya 200 (OK)
+            return caches.open(CACHE_NAME).then(cache => {
+              if (networkResponse.status === 200) {
+                // Periksa apakah permintaan berasal dari protokol http atau https sebelum meng-clone
+                if (event.request.url.startsWith('http')) {
+                    cache.put(event.request, networkResponse.clone());
+                }
+              }
+              return networkResponse;
+            });
+          }
+        ).catch(error => {
+            // Tangani kesalahan saat gagal mengambil dari jaringan
+            console.error('Service Worker: Gagal mengambil dari jaringan.', error);
+        });
+      })
   );
 });
