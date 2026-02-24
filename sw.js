@@ -1,6 +1,6 @@
 // Nama cache unik untuk aplikasi Anda. Ubah jika ada perubahan besar pada file.
 // Tingkatkan versi ini setiap kali Anda mengubah file yang di-cache.
-const CACHE_NAME = 'timesheet-epm-cache-v1.4'; // Versi cache baru
+const CACHE_NAME = 'timesheet-epm-cache-v1.5'; // Versi cache baru
 
 // Dapatkan nama repository dari URL untuk path yang benar di GitHub Pages
 const repoName = new URL(self.location).pathname.split('/')[1] || '';
